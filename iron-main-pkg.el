@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 2020.12.02
+;; Version: 20201206.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -20,7 +20,7 @@
 
 ;;; Code:
 
-(define-package "IRON MAIN" "2020.12.02"
+(define-package "IRON MAIN" "20201206.1"
   "The Iron Main package.
 
 The Iron Main package is a collection of modes and code to allow Emacs

@@ -75,22 +75,24 @@
 ;; Polymode would be very nice to have.
 ;; Some extra fixes to the font-lock machinery are a must.
 
-;; Code:
+;;; Code:
 
 ;;;; JCL Mode Setup.
 
-(defgroup jcl ()
-  "The major mode to manipulate IBM MVS and z/OS Job Control Language."
+(defgroup jcl nil
+  "The major mode to manipulate IBM MVS and z/OS Job Control Language.
+
+This mode is part of the IRON MAIN package."
   :group 'languages)
 
-(defcustom jcl-os-flavor "MVS 3.8"
+(defcustom jcl-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
 The values of this variable are strings starting either with 'MVS' or
 'z/OS'.  Other variants are acceptable as long as the 'main' OS name
 comes first.
 
-The value 'MVS 3.8' is the default one, being the version of MVS
+The value 'MVS 3.8j' is the default one, being the version of MVS
 that IBM release in the public domain."
   :group 'jcl
   :type 'string)
@@ -119,15 +121,18 @@ These are not really 'constants', as JCL does not really have them.")
   "JCL operations.")
 
 
+;; jcl-operands
+;; The list is incomplete.
+
 (defvar jcl-operands
   '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD"
     "PGM" "COND"
-    "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR"
+    "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR" "DELETE" "DEL"
     "VOL" "VOLUME" "SER" "SERIAL"
     "DSNAME" "DSN"
     "DDNAME"
     "UNIT"
-    "SPACE" "CYL"
+    "SPACE" "CYL" "TRK"
     "DCB" "RECFM" "LRECL" "BLKSIZE"
     "SYSOUT"
     "DATA" "DLM"
@@ -152,12 +157,18 @@ In other languages, they would be the 'keyword' arguments.")
 These are the 'names' of jobs and steps.")
 
 
+(defvar jcl-comments
+  "^//\\*.*$"
+  "JCL 'full card' comments.")
+
+
 (defvar jcl-card-end-comments-1
   "^//[^* ]+ +[[:graph:]]* +[[:graph:]]+ +\\([[:graph:]].*\\)"
-  "JCL 'end of card' comments for 'full' cards..
+  "JCL 'end of card' comments for 'full' cards.
 
 Anything after the 'operands' in a card is a comment; this regexp
 selects them.")
+
 
 (defvar jcl-card-end-comments-2
   "// +[[:graph:]]+ +\\([[:graph:]].*\\)"
@@ -173,62 +184,56 @@ selects them in case of 'continuation' cards that do not have the
 (defcustom jcl-string-face 'font-lock-string-face
   "The face used to fontify strings (single-quoted) in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 (defcustom jcl-names-face 'font-lock-function-name-face
   "The face used to fontify 'names' in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 (defcustom jcl-operations-face 'font-lock-keyword-face
   "The face used to fontify 'operations' in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 (defcustom jcl-operands-face 'font-lock-type-face
   "The face used to fontify 'operands' in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 (defcustom jcl-operators-face 'font-lock-builtin-face
   "The face used to fontify 'operators' in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 (defcustom jcl-comment-face 'font-lock-comment-face
   "The face used to fontify 'comments' in JCL mode."
   :group 'jcl
+  :type 'symbol
   )
 
 
 (defvar jcl-font-lock-keywords
   `(
-    ;; Single quote quoted strings.
-    ;; ("'\\.\\*\\?" . font-lock-string-face)
-    ;; ("'.*'" . font-lock-string-face)
-    ;; ("'.*'" . font-lock-string-face)
     (,jcl-strings . ,jcl-string-face)
 
     (,jcl-names . (1 ,jcl-names-face))
 
-    ;; (,(regexp-opt jcl-kwd-parameters nil) . font-lock-variable-name-face)
-    (,(regexp-opt jcl-operands 'words) . ,jcl-operands-face)
-    ;; (,jcl-kwd-parameters . font-lock-variable-name-face) ; No good.
-
-    ;; (,(regexp-opt jcl-constants 'words) . font-lock-constant-face)
-
-    ;; (,(regexp-opt jcl-keywords nil) . font-lock-keyword-face)
     (,(regexp-opt jcl-operations 'words) . ,jcl-operations-face)
-    ;; (,jcl-keywords . font-lock-keyword-face) ; No good.
+
+    (,(regexp-opt jcl-operands 'words) . ,jcl-operands-face)
 
     (,(regexp-opt jcl-operators nil) . ,jcl-operators-face)
-    ;; (,(regexp-opt jcl-operators 'words) . font-lock-builtin-face)
-    ;; (,jcl-operators . font-lock-builtin-face) ; No good.
 
     ;;These must be last.
     (,jcl-card-end-comments-1 . (1 ,jcl-comment-face))
     (,jcl-card-end-comments-2 . (1 ,jcl-comment-face))
-
+    (,jcl-comments . (0 ,jcl-comment-face t))
     )
   "The JCL mode 'font-lock' 'keyword' specification."
   )
@@ -246,9 +251,9 @@ selects them in case of 'continuation' cards that do not have the
 
 (defvar jcl-mode-syntax-table
   (let ((jclst (make-syntax-table)))
-    (modify-syntax-entry ?/ ". 1" jclst)
-    (modify-syntax-entry ?* ". 2" jclst)
-    (modify-syntax-entry ?\n "> " jclst)
+    ;; (modify-syntax-entry ?/ ". 1" jclst)
+    ;; (modify-syntax-entry ?* ". 2" jclst)
+    ;; (modify-syntax-entry ?\n "> " jclst)
     jclst
     )
   "The JCL mode syntax table."
@@ -262,7 +267,6 @@ selects them in case of 'continuation' cards that do not have the
     (set-keymap-parent km prog-mode-map) ; Inherit from prog-mode-map!
     km)
   "The JCL mode key map.")
-
 
 
 ;;; jcl-imenu-generic-expression
@@ -287,12 +291,12 @@ selects them in case of 'continuation' cards that do not have the
   (setq-local font-lock-defaults jcl-font-lock-defaults)
 
   (face-remap-add-relative jcl-comment-face  :weight 'bold)
-  (face-remap-add-relative jcl-operators-face  :weight 'bold :foreground "Forest Green")
+  (face-remap-add-relative jcl-operators-face  :weight 'bold
+			   :foreground "Forest Green") ; This may be too much.
   (face-remap-add-relative jcl-operations-face  :weight 'bold)
-  ;; (face-remap-add-relative 'font-lock-string-face   :weight 'bold)
 
   ;; Comments.
-  ;; (setq-local comment-start "//\*")
+  ;; (setq-local comment-start "//\\*")
   ;; (setq-local comment-end "")
   ;; (setq-local comment-start-skip
   ;;             "^//[[:graph:]]*[[:blank:]]+[[:graph:]]+[[:blank:]]+")
@@ -300,8 +304,7 @@ selects them in case of 'continuation' cards that do not have the
   ;; Set up the mode keymap.
 
   (use-local-map jcl-mode-map)
-  
-  
+
   ;; Set up the menus.
 
   (easy-menu-define jcl-mainframe-os-menu jcl-mode-map
@@ -314,28 +317,13 @@ selects them in case of 'continuation' cards that do not have the
   (setq-local imenu-generic-expression
 	      (reverse jcl-imenu-generic-expression))
   (imenu-add-to-menubar "JCL Code")
-  
 
-  ;; Columns and Vertical line at column 72.
-  ;; JCL cards start at column 1.
-  (column-number-mode)
-  (setq-local column-number-indicator-zero-based nil)
-  
-  ;; (fci-mode 42)
-  ;; (setq-local fci-rule-column 72)
-  ;; (setq fci-rule-width 24)
+  ;; Start the IRON MAIN minor mode, which sets up the ruler and the
+  ;; "card" editing limits, plus the fill-column indicator.
 
-  (display-fill-column-indicator-mode)
-  (setq-local display-fill-column-indicator t
-	      display-fill-column-indicator-column 72)
+  (iron-main-mode)
 
-  ;; Always start ruler.
-  (ruler-mode)
-  (if (fboundp 'iron-main-ruler-function)
-      (setq-local ruler-mode-ruler-function
-		  'iron-main-ruler-function)
-    (warn "IRON MAIN: specialized ruler builder undefined.")
-    )
+  'jcl-mode
   )
 
 

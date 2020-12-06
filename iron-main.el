@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20201204.1
+;; Version: 20201206.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -41,12 +41,20 @@
 (defvar iron-main-path (file-name-directory load-file-name)
   "The location the IRON MAIN library is loaded from.")
 
+(defvar iron-main-path-tests
+  (expand-file-name "tests/" iron-main-path)
+  "The location of the IRON MAIN library \"tests\" folder.")
+
 
 ;; The order of the require and load calls is relevant.
 
 (require 'ruler-mode)
+
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
+
+(byte-recompile-directory iron-main-path 0)
+
 (load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "asmibm-mode" iron-main-path))
 

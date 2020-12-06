@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20201204.1
+;; Version: 20201206.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -75,22 +75,17 @@ that IBM release in the public domain."
   :type 'string)
 
 
-;;; jcl-keymap
-
-(defvar iron-main-mode-map
-  (let ((km (make-sparse-keymap)))
-    (set-keymap-parent km prog-mode-map) ; Inherit from prog-mode-map!
-    km)
-  "The IRON MAIN mode key map.")
-
-
 ;;; iron-main-mode
 
 (define-minor-mode iron-main-mode
   "A minor mode to edit files and interact with IBM MVS or z/OS."
-  prog-mode "IRON MAIN"
+  nil
+  "//IRON-MAIN"
 
-  :syntax-table iron-main-mode-syntax-table
+  :group 'iron-main
+  :keymap (let ((km (make-sparse-keymap)))
+	    (set-keymap-parent km prog-mode-map) ; Inherit from prog-mode-map!
+	    km)
 
   ;; Columns and Vertical line at column 72.
   ;; JCL cards start at column 1.
@@ -113,11 +108,6 @@ that IBM release in the public domain."
     (warn "IRON MAIN: specialized ruler builder undefined.")
     )
   )
-
-
-;;;; Commands
-;;;; ========
-
 
 
 ;;;; Epilogue

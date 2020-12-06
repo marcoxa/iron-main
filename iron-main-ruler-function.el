@@ -32,7 +32,7 @@
 
 (require 'ruler-mode)
 
-;;;###autoload
+
 (defun iron-main-current-column ()
   "This function returns the `current-column', possibly 1-based.
 
@@ -44,7 +44,6 @@ function `current-column'."
     (1+ (current-column))))
 
 
-;;;###autoload
 (defun iron-main-ruler-function ()
   "Compute and return a header line ruler.
 

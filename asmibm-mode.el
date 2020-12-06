@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20201204.1
+;; Version: 20201206.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -22,11 +22,13 @@
 
 ;;;; ASM IBM Mode Setup.
 
-(defgroup asmibm ()
-  "The major mode to handle Assemblers for IBM 360/370 and z Series machines."
+(defgroup asmibm nil
+  "The major mode to handle Assemblers for IBM 360/370 and z Series machines.
+
+This mode is part of the IRON MAIN package."
   :group 'languages)
 
-(defcustom asmibm-os-flavor "MVS 3.8"
+(defcustom asmibm-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
 The values of this variable are strings starting either with 'MVS' or
@@ -74,12 +76,14 @@ These are the instructions mnemonics.")
 
 A '*' at the beginning of the card (line) marks a comment.")
 
+
 (defvar asmibm-card-end-comments-1
   "^[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "ASM IBM 'end of card' comments for 'full' cards..
 
 Anything after the 'operands' in a card is a comment; this regexp
 selects them.")
+
 
 (defvar asmibm-card-end-comments-2
   "^ +[[:graph:]]+ +\\([[:graph:]].*\\)"
@@ -88,6 +92,7 @@ selects them.")
 Anything after the 'operands' in a card is a comment; this regexp
 selects them in case of 'continuation' cards that do not have the
 'name' and 'operation'.")
+
 
 (defvar asmibm-card-end-comments-3
   "^ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
@@ -100,7 +105,8 @@ non blank character.")
 
 
 (defvar asmibm-jcl
-  "^\/\/.*$")
+  "^//.*$"
+  "Lines starting with '//' are assumed to be JCL which wraps the Assembler.")
 
 
 ;;; ASM IBM faces.
@@ -223,16 +229,13 @@ Not all features of HLASM are currently supported."
 
   :syntax-table asmibm-mode-syntax-table
 
-  ;; (setq-local fixed-pitch-serif 'fixed-pitch-serif)
-  ;; (setq-local shadow 'shadow)
   (setq-local font-lock-defaults asmibm-font-lock-defaults)
-
-  ;; (face-remap-add-relative asmibm-comment-face  :weight 'bold)
 
   (face-remap-add-relative asmibm-operations-face  :weight 'bold)
 
-  (face-remap-add-relative asmibm-operators-face  :weight 'bold :foreground "Forest Green")
-  ;; (face-remap-add-relative 'font-lock-string-face   :weight 'bold)
+  (face-remap-add-relative asmibm-operators-face
+			   :weight 'bold
+			   :foreground "Forest Green") ; May be too much.
 
   ;; Comments.
   ;; (setq-local comment-start "//\*")
@@ -264,26 +267,15 @@ Not all features of HLASM are currently supported."
   (setq-local imenu-generic-expression
 	      (reverse asmibm-imenu-generic-expression))
   (imenu-add-to-menubar "ASM IBM Code")
-  
-  ;; Columns and Vertical line at column 72.
-  ;; Assembly cards start at column 1.
-  (column-number-mode)
-  (setq-local column-number-indicator-zero-based nil)
-  
-  ;; (fci-mode 42)
-  ;; (setq-local fci-rule-column 72)
-  ;; (setq fci-rule-width 24)
-  
-  (setq-local display-fill-column-indicator t
-	      display-fill-column-indicator-column 72)
 
-  ;; Always start ruler.
-  (ruler-mode)
-  (if (fboundp 'iron-main-ruler-function)
-      (setq-local ruler-mode-ruler-function
-		  'iron-main-ruler-function)
-    (warn "IRON MAIN: specialized ruler builder undefined.")
+  ;; Start the IRON MAIN minor mode, which sets up the ruler and the
+  ;; "card" editing limits, plus the fill-column indicator.
+
+  (iron-main-mode)
+
+  'asmibm-mode
   )
+
 
 ;;; Functions and Commands.
 
