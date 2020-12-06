@@ -96,6 +96,14 @@ ASM IBM.  The mode just does highlighting and some minor indentation.
 
 More functionalities may come in the future.
 
+
+# Installing and Using IRON MAIN
+
+To use the package, just install the folder `iron-main` in your Emacs
+setup and ensure that the file `iron-main.el` is loaded.  Files with
+`.jcl` extension will now load in `jcl-mode`.
+
+
 ### A NOTE ON FORKING
 
 Of course you are free to fork the project subject to the current
