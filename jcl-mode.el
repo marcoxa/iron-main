@@ -130,6 +130,7 @@ These are not really 'constants', as JCL does not really have them.")
     "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR" "DELETE" "DEL"
     "VOL" "VOLUME" "SER" "SERIAL"
     "DSNAME" "DSN"
+    "DSORG"
     "DDNAME"
     "UNIT"
     "SPACE" "CYL" "TRK"
