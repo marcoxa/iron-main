@@ -55,8 +55,10 @@
 
 (byte-recompile-directory iron-main-path 0)
 
+(load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "asmibm-mode" iron-main-path))
+
 
 ;;;; Epilogue
 ;;;; ========
