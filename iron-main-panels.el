@@ -5,54 +5,10 @@
 
 ;;; Code:
 
-(require 'cl-lib)
 (require 'widget)
 
 (eval-when-compile
   (require 'wid-edit))
-
-
-(cl-defstruct (iron-main-dataset-representation
-	       (:constructor make-iron-main-ds-rep)
-	       (:conc-name iron-main-ds-rep-))
-  "The IRON MAIN dataset representation."
-  (name "")
-  (recfm "FB" :type string)		; From Rob Prin's RPE.
-  (lrecl 80)				; From Rob Prin's RPE.
-  (blksize 3120)			; From Rob Prin's RPE.
-  (dsorg "PS" :type string)
-
-  
-  (unit "SYSDA")
-  (vol "")
-  (space-unit "TRK") 
-  (primary "1")
-  (secondary "")
-  (directory 0)
-  ;; ..
-  )
-
-
-(defun iron-main-ds-to-string (ds)
-  "Convert a `iron-main-dataset-representation' object DS to a string."
-  (format
-   "DSN=%s,RECFM=%s,LRECL=%s,BLKSIZE=%s,DSORG=%s,UNIT=%s,VOL=%s,SPACE=(%s,(%s,%s,%s))"
-   (iron-main-ds-rep-name ds)
-
-   (iron-main-ds-rep-recfm ds)
-   (iron-main-ds-rep-lrecl ds)
-   (iron-main-ds-rep-blksize ds)
-   (iron-main-ds-rep-dsorg ds)
-
-   (iron-main-ds-rep-unit ds)
-   (iron-main-ds-rep-vol ds)
-   
-   (iron-main-ds-rep-space-unit ds)
-   
-   (iron-main-ds-rep-primary ds)
-   (iron-main-ds-rep-secondary ds)
-   (iron-main-ds-rep-directory ds)
-   ))
 
 
 (defvar widget-example-repeat)
