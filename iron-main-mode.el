@@ -43,11 +43,12 @@
 
 ;;;; IRON MAIN Mode Setup.
 
-(defvar iron-main-path (file-name-directory load-file-name)
-  "The location the IRON MAIN library is loaded from.")
-
 (require 'ruler-mode)
-(load (expand-file-name "iron-main-ruler-function" iron-main-path))
+(require 'iron-main-ruler-function)
+(require 'iron-main-utils)
+(require 'iron-main-panels)
+
+;; (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 
 
 ;;; Customizations:
