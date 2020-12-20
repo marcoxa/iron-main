@@ -30,6 +30,6 @@ emulator."
   )
 
 
-(provide 'iron-main)
+(provide 'iron-main-pkg)
 
 ;;; iron-main-pkg.el ends here.
