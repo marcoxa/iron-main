@@ -34,7 +34,7 @@
 
 
 (defun iron-main-current-column ()
-  "This function returns the `current-column', possibly 1-based.
+  "Return the `current-column', possibly 1-based.
 
 The function tracks the variable `column-number-indicator-zero-based',
 and if this is NIL, then it adds 1 to the result of the low-level
@@ -209,4 +209,10 @@ This function can (and should) be used as a value of
       (list "" (and (eq 'left sbvt) sb) lm lf
             ruler rf rm (and (eq 'right sbvt) sb)))))
 
-;;;; iron-main-ruler-function.el ends here.
+
+;;;; Epilogue
+;;;; ========
+
+(provide 'iron-main-ruler-function)
+
+;;; iron-main-ruler-function.el ends here
