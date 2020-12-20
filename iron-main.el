@@ -51,13 +51,14 @@
 (require 'ruler-mode)
 
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
+(load (expand-file-name "iron-main-utils" iron-main-path))
+(load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
-(byte-recompile-directory iron-main-path 0)
-
-(load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "asmibm-mode" iron-main-path))
+
+(byte-recompile-directory iron-main-path 0)
 
 
 ;;;; Epilogue
