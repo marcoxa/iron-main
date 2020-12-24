@@ -50,19 +50,25 @@
 
 (require 'ruler-mode)
 
+
+;; Mainframe interaction files.
+
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-utils" iron-main-path))
 (load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
+
+;; Language mode files.
+
 (load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "asmibm-mode" iron-main-path))
-
-(byte-recompile-directory iron-main-path 0)
 
 
 ;;;; Epilogue
 ;;;; ========
+
+(byte-recompile-directory iron-main-path 0)
 
 (provide 'iron-main)
 
