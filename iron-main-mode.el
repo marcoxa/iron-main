@@ -44,36 +44,12 @@
 ;;;; IRON MAIN Mode Setup.
 
 (require 'ruler-mode)
+(require 'iron-main-vars)
 (require 'iron-main-ruler-function)
 (require 'iron-main-utils)
 (require 'iron-main-panels)
 
 ;; (load (expand-file-name "iron-main-ruler-function" iron-main-path))
-
-
-;;; Customizations:
-
-(defgroup iron-main ()
-  "A minor mode to edit files and interact with IBM MVS or z/OS .
-
-This is a minor mode just because it is a good thing to have a
-shared location where to centralize definitions for the main modes
-and functionalities that make up this package.  E.g., see the major
-modes `jcl-mode' and `asmibm-mode'."
-  :group 'languages)
-
-
-(defcustom iron-main-os-flavor "MVS 3.8j"
-  "The current flavor of MVS used.
-
-The values of this variable are strings starting either with 'MVS' or
-'z/OS'.  Other variants are acceptable as long as the 'main' OS name
-comes first.
-
-The value \"MVS 3.8j\" is the default one, being the version of MVS
-that IBM release in the public domain."
-  :group 'iron-main
-  :type 'string)
 
 
 ;;; iron-main-mode
