@@ -30,6 +30,23 @@
 ;;;; IRON MAIN Mode utilities functions.
 
 (require 'cl-lib)
+(require 'url)
+(require 'iron-main-vars)
+
+
+;;;; Mainframe setup.
+
+;; Hercules setup.
+
+(defun iron-main-set-dasd-dir (dasd-dir)
+  "Set the `iron-main-dasd-dir' to DASD-DIR."
+  (if (file-directory-p dasd-dir)
+      (setq-local iron-main-dasd-dir dasd-dir)
+    (error "Cannot set the DASD folder to %s; not a directory"
+	   dasd-dir)))
+
+
+;;;; Datasets
 
 (cl-defstruct (iron-main-dataset-representation
 	       (:constructor make-iron-main-ds-rep)
@@ -144,6 +161,118 @@ More tests will be added in the future."
     (error "DS REP cannot have \"PO\" DSORG and 0 directory blocks"))
   ;; More checks later.
   t
+  )
+
+
+;;;; Hercules interface.
+;;;; This may end up in a different file.
+
+
+(defun iron-main-herc-call-utility (utility output &rest args)
+  "Call the Hercules utility program UTILITY with ARGS.
+
+If OUTPUT is NIL the output of the utility is collected into a
+string.  If OUTPUT is the atom `list' then the output of the utility
+is collected into a list of lines."
+
+  (let ((output-lines (apply 'process-lines utility args)))
+    (cl-case output
+      ((nil) (apply 'concat output-lines))
+      (list output-lines)
+      ;; ...
+      )))
+
+
+(cl-defun iron-main-hercules-is-listening (&optional
+					   (herc-host
+					    iron-main-hercules-http-host)
+					   (herc-port
+					    iron-main-hercules-http-port))
+  "Check whether there is a HTTP-enable Hercules instance running.
+
+The Hercules instance should be running on HERC-HOST listening on
+HERC-PORT.  HERC-HOST defaults to `iron-main-hercules-http-host',
+while HERC-PORT defaults to `iron-main-hercules-http-port'.
+
+The function returns a non NIL value if there is such an instance
+running.
+
+Notes:
+
+The current value returned in the case a Hercules instance is
+listening is a list with the network process as first element.  The
+`process-status' of this process will turn to 'closed'; therefore it
+cannot be relied upon for anthing other than this check."
+
+  (let* ((herc-string-url
+	  (concat "http://" herc-host ":" (format "%s" herc-port)))
+	 (herc-url
+	  (url-generic-parse-url herc-string-url)) ; Maybe useless.
+	 (url-current-object herc-url)	; Being paranoid, given the
+					; stupidity of this variable.
+	 )
+    (message "IMHE000I: trying to connect to %S" herc-string-url)
+    (condition-case e
+	(let ((c (make-network-process
+		  :name (format "IMHEHTTP test %S:%S"
+				herc-host
+				herc-port)
+		  :host (url-host herc-url)
+		  :service (url-port herc-url)
+		  :server nil
+		  ))
+	      )
+	  (when c
+	    (prog1
+		(list c (process-status c))
+	      (delete-process c))))
+      (file-error
+       (message "IMHE000W: failed with %S %S" (cl-first e) (cl-second e))
+       nil)
+      (error
+       (message "IMHE001W: %S %S" (cl-first e) (cl-second e))
+       nil)
+      )))
+
+
+(cl-defun iron-main-hercules-cmd (cmd
+				  &key
+				  (host
+				   iron-main-hercules-http-host)
+				  (port
+				   iron-main-hercules-http-port)
+				  (timeout 15)
+				  (check-listening nil)
+				  )
+  "Issue a command CMD to a running Hercules instance.
+
+The command is issued to the HTTP-enabled Hercules instance running on
+HOST and listening on PORT.  If the the Hercules instance responds,
+then the buffer containing the response is returned, NIL otherwise.
+
+If CHECK-LISTENING is non null, then the
+test `iron-main-hercules-is-listening' is run; if its result is NIL
+then the command is not issued.
+
+The command is issued synchronously with a TIMEOUT (cfr.,
+`url-retrieve-synchronously')."
+
+  (when (and check-listening
+	     (not (iron-main-hercules-is-listening host port)))
+    (message "IMHE002W: command %S not issued." cmd)
+    (cl-return-from iron-main-hercules-cmd nil))
+  
+  ;; The following CGI url was desumed from Hercules HTTP
+  ;; implementation.
+  
+  (let ((cmd-url
+	 (format "http://%s:%s/cgi-bin/tasks/cmd?cmd=%s"
+		 host
+		 port
+		 cmd))
+	)
+    (ignore-errors
+      (url-retrieve-synchronously cmd-url nil nil timeout)))
   )
 
 
