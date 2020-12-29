@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20201206.1
+;; Version: 20201228.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -53,8 +53,10 @@
 
 ;; Mainframe interaction files.
 
+(load (expand-file-name "iron-main-vars" iron-main-path))
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-utils" iron-main-path))
+(load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
 (load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
