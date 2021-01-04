@@ -56,8 +56,8 @@
 (load (expand-file-name "iron-main-vars" iron-main-path))
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-utils" iron-main-path))
-(load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
 (load (expand-file-name "iron-main-panels" iron-main-path))
+(load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
 
