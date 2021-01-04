@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 17th, 2020.
 ;;
-;; Version: 20201206.1
+;; Version: 20201229.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -27,6 +27,7 @@
 (require 'cl-lib)
 (require 'iron-main-vars)
 (require 'iron-main-utils)
+(require 'iron-main-panels)
 
 
 ;;;; Hercules commands.
@@ -78,6 +79,31 @@ in the KEYS &rest variable."
        ,@forms)))
 
 
+;;;; Hercules console commands.
+;;
+;; There are two categories of commands (sorry, you have to read the
+;; documentation strings): those that return a value -- usually a
+;; string or a list of strings -- and those that switch to another
+;; buffer/panel showing the output (the "help" command is one of
+;; these).
+
+(define-hercules-cmd "help" ()
+  "Return result of running the Hercules 'help' command.
+
+The value returned is a string containing the host system process id
+or NIL if the command could not be issued (most likely because there
+is no running Hercules instance)."
+  (let ((cmdbuf (apply 'iron-main-hercules-cmd "help" keys)))
+    (when cmdbuf
+      (with-current-buffer cmdbuf
+	(goto-char (point-min))
+	(let ((pid-re "HHC17013I Process ID = \\([0-9]+\\)"))
+	  (re-search-forward pid-re)
+	  (match-string 1)
+	  )))
+    ))
+
+
 (define-hercules-cmd "qpid" ()
   "Return the host process id of the running Hercules instance.
 
@@ -93,6 +119,8 @@ is no running Hercules instance)."
 	  (match-string 1)
 	  )))
     ))
+
+
 	 
     
   
