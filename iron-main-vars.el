@@ -101,6 +101,16 @@ version of 'MVS' (or 'z/OS') running."
   :type  'integer)
 
 
+(defcustom iron-main-hercules-os-dir ""
+  "The folder where the OS running on Hercules resides..
+
+This variable makes sense only for Hercules installations, i.e., for
+setups where the value of `iron-main-machine' is \"Hercules ...\"."
+  :group 'iron-main-hercules
+  :type  'string
+  )
+
+
 (defcustom iron-main-hercules-dasd-dir "dasd"
   "The folder containing the installation DASDs.
 
