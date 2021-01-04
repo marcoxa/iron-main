@@ -67,6 +67,8 @@
 The value can be either a string or a symbol.")
 
 
+;;;; Panels.
+
 (define-derived-mode iron-main-panel-mode nil "//IRON-MAIN"
   "IRON MAIN Panel Mode.
 
@@ -496,6 +498,16 @@ This function is necessary because it is inexplicably absent from the
   (plist-get (cdr w) :tag))
 
 
+(defun iron-main-widget-notify (w)
+  "Get the :notify function of widget W.
+
+Notes:
+
+This function is necessary because it is inexplicably absent from the
+`widget.el' library."
+  (plist-get (cdr w) :notify))
+
+
 (cl-defun iron-main-frame-panel (&optional
 				 (machine iron-main-machine)
 				 (os-flavor iron-main-os-flavor)
@@ -672,7 +684,30 @@ where the relevant bits and pieces used by the emulator can be found."
   (widget-insert "\n")
 
   (widget-insert "Command")
-  (widget-create 'integer :size 63 :tag "" :value 1)
+  (widget-create 'integer :size 63 :tag "" :value ""
+		 :validate
+		 (lambda (cmd)
+		   (<= 1
+		       (widget-value cmd)
+		       (length iron-main--hercules-top-commands)))
+		 :notify
+		 (lambda (cmd &rest args)
+		   (message ">>> notified")
+		   (sleep-for 3)
+		   (let* ((cmd-widget
+			   (nth (1- (widget-value cmd))
+				iron-main-hercules-top-cmds-links))
+			  (cmd-notify
+			   (iron-main-widget-notify cmd-widget))
+			  )
+		     (message ">>> calling %s on %s"
+			      cmd-notify
+			      cmd-widget)
+		     (when cmd-notify
+		       (apply cmd-notify cmd-widget args))
+		     ))
+		 )
+		       
   (widget-insert "\n\n")
 
   (make-local-variable 'iron-main-hercules-top-cmds-links)
