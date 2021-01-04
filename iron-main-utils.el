@@ -36,14 +36,20 @@
 
 ;;;; Mainframe setup.
 
-;; Hercules setup.
+(defun iron-main-running-os (os-flavor)
+  "Check whether IRON MAIN is running OS-FLAVOR."
+  (string-prefix-p os-flavor iron-main-os-flavor))
 
-(defun iron-main-set-dasd-dir (dasd-dir)
-  "Set the `iron-main-dasd-dir' to DASD-DIR."
-  (if (file-directory-p dasd-dir)
-      (setq-local iron-main-dasd-dir dasd-dir)
-    (error "Cannot set the DASD folder to %s; not a directory"
-	   dasd-dir)))
+
+(defun iron-main-running-machine (machine)
+  "Check whether IRON MAIN is running MACHINE."
+  (string-prefix-p machine iron-main-machine))
+
+
+(defun iron-main-running-on (os-flavor machine)
+  "Check whether IRON MAIN is running OS-FLAVOR on MACHINE."
+  (and (string-prefix-p os-flavor iron-main-os-flavor)
+       (string-prefix-p machine iron-main-machine)))
 
 
 ;;;; Datasets
@@ -167,20 +173,27 @@ More tests will be added in the future."
 ;;;; Hercules interface.
 ;;;; This may end up in a different file.
 
+(defun iron-main-hercules-set-dasd-dir (dasd-dir)
+  "Set the `iron-main-dasd-dir' to DASD-DIR."
+  (if (file-directory-p dasd-dir)
+      (setq-local iron-main-hercules-dasd-dir dasd-dir)
+    (error "Cannot set the DASD folder to %s; not a directory"
+	   dasd-dir)))
 
-(defun iron-main-herc-call-utility (utility output &rest args)
-  "Call the Hercules utility program UTILITY with ARGS.
 
-If OUTPUT is NIL the output of the utility is collected into a
-string.  If OUTPUT is the atom `list' then the output of the utility
-is collected into a list of lines."
+;; (defun iron-main-hercules-call-utility (utility output &rest args)
+;;   "Call the Hercules utility program UTILITY with ARGS.
 
-  (let ((output-lines (apply 'process-lines utility args)))
-    (cl-case output
-      ((nil) (apply 'concat output-lines))
-      (list output-lines)
-      ;; ...
-      )))
+;; If OUTPUT is NIL the output of the utility is collected into a
+;; string.  If OUTPUT is the atom `list' then the output of the utility
+;; is collected into a list of lines."
+
+;;   (let ((output-lines (apply 'process-lines utility args)))
+;;     (cl-case output
+;;       ((nil) (apply 'concat output-lines))
+;;       (list output-lines)
+;;       ;; ...
+;;       )))
 
 
 (cl-defun iron-main-hercules-is-listening (&optional
