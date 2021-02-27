@@ -87,7 +87,13 @@ and a specialized keymap."
   (unless title
     (setq title "Top"))
   ;; (widget-insert "\n")
-  (widget-insert (format "IRON MAIN %s\n" title))
+  (widget-insert (propertize (format "IRON MAIN %s\n" title)
+			     ;; 'face 'fixed-pitch-serif
+			     'face '(fixed-pitch-serif
+				     :foreground "red"
+				     :weight bold
+				     )
+			     ))
   (widget-insert (make-string 72 175))	; 175 is the "overline"
   (widget-insert "\n")
   )
@@ -488,6 +494,18 @@ and a specialized keymap."
   "The PID of the Hercules process.  NIL if it is not running or reachable.")
 
 
+(defvar-local iron-main-panel-session nil
+  "The session a panel is attached to.")
+
+
+(defun iron-main-panel-get-session (panel)
+  "Get the IRON MAIN session attached to PANEL.
+
+PANEL must be a buffer or a buffer name."
+  (with-current-buffer panel
+    iron-main-panel-session))
+
+
 (defun iron-main-widget-tag (w)
   "Get the :tag of widget W.
 
@@ -538,10 +556,17 @@ This function is necessary because it is inexplicably absent from the
     (let ((pid (progn
 		 (message "IMMP01I: Hercules running; getting PID.")
 		 (iron-main-hercules-qpid)))
+	  (session
+	   (iron-main-session-start 'iron-main-hercules-session))
 	  )
-      (setq-local iron-main-hercules-pid pid)
+      (setq-local iron-main-hercules-pid pid
+		  iron-main-panel-session session)
+
       (if pid
-	  (setf iron-main-instance-banner
+	  (setf (iron-main-hs-pid session)
+		pid
+		
+		iron-main-instance-banner
 		(format "%s running %s on %s:%s (%s) from %s"
 			iron-main-machine
 			iron-main-os-flavor
@@ -607,6 +632,7 @@ This function is necessary because it is inexplicably absent from the
   (iron-main-panel-title)
   (widget-insert iron-main-instance-banner)
   (widget-insert "\n")
+  
   ;; (widget-insert "OS Hercules dir:      %s\n"
   ;; 		 iron-main-hercules-os-dir)
   ;; (widget-insert "OS Hercules DASD dir: %s\n"
@@ -690,21 +716,22 @@ where the relevant bits and pieces used by the emulator can be found."
 		   (<= 1
 		       (widget-value cmd)
 		       (length iron-main--hercules-top-commands)))
-		 :notify
-		 (lambda (cmd &rest args)
-		   (message ">>> notified")
-		   (sleep-for 3)
+		 
+		 :action
+		 (lambda (cmd &optional event)
+		   ;; (message ">>> notified")
+		   ;; (sleep-for 3)
 		   (let* ((cmd-widget
 			   (nth (1- (widget-value cmd))
 				iron-main-hercules-top-cmds-links))
 			  (cmd-notify
 			   (iron-main-widget-notify cmd-widget))
 			  )
-		     (message ">>> calling %s on %s"
-			      cmd-notify
-			      cmd-widget)
+		     ;; (message ">>> calling %s on %s"
+		     ;; 	      cmd-notify
+		     ;; 	      cmd-widget)
 		     (when cmd-notify
-		       (apply cmd-notify cmd-widget args))
+		       (apply cmd-notify cmd-widget ()))
 		     ))
 		 )
 		       
@@ -749,6 +776,42 @@ where the relevant bits and pieces used by the emulator can be found."
   )
 
 
+(cl-defun iron-main--hercules-system (session &rest args)
+  "Hercules system inpection panel."
+
+  (cl-assert (iron-main-session-p session) t
+	     "SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN Hercules system*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+  (iron-main-panel-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-panel-session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session)
+	      iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-panel-tag "Hercules system")
+  
+  (iron-main-panel-title "Hercules system")
+
+  ;; Let's start!
+
+  (message "IMHS00I: Hercules system.")
+  (widget-setup)
+  )
+
+
+
 ;;; Panel navigation.
 
 (cl-defun iron-main-exit-panel (&optional (panel-to-exit
@@ -759,21 +822,32 @@ PANEL-TO-EXIT is the panel to exit, defaulting to the current buffer.
 If PANEL-TO-EXIT is not an IRON-MAIN panel, then this function has no
 effect.  If the 'back' buffer is not live"
 
+  (interactive)
+
+  (message ">>> Exiting %S" panel-to-exit)
   (with-current-buffer panel-to-exit
+    (message ">>> in-panel %S, panel-tag %S, back %S, live %S"
+	     iron-main-in-panel
+	     iron-main-panel-tag
+	     iron-main-panel-back
+	     (and (bufferp iron-main-panel-back)
+		  (buffer-live-p iron-main-panel-back)))
     (when iron-main-in-panel
       (when (string= iron-main-panel-tag "Top")
 	(message "IMMP02I: Exiting IRON MAIN...")
-	(sleep-for 3))
-		     
+	(sleep-for 3)
+	(iron-main-session-delete iron-main-panel-session))
+
+      ;; Order of `switch-to-buffer' and `kill-buffer' is important.
       (if (and (bufferp iron-main-panel-back)
 	       (buffer-live-p iron-main-panel-back))
 	  (progn
-	    (kill-buffer panel-to-exit)
-	    (switch-to-buffer iron-main-panel-back))
+	    (switch-to-buffer iron-main-panel-back nil t)
+	    (kill-buffer panel-to-exit))
 	(progn
 	  ;; iron-main-panel-back not a buffer or not live.
-	  (kill-buffer panel-to-exit)
-	  (switch-to-buffer "*GNU Emacs*"))
+	  (switch-to-buffer "*GNU Emacs*")
+	  (kill-buffer panel-to-exit))
 	))))
 
 
@@ -781,11 +855,12 @@ effect.  If the 'back' buffer is not live"
   "Start a new panel by calling PANEL-START-FUNCTION.
 
 The function PANEL-START-FUNCTION is one of the functions setting
-up a panel; it is called by applying it to ARGS.  After calling
-the PANEL-START-FUNCTION, `iron-main-invoke-panel' assumes that
-Emacs has switched to a new panel/buffer and it sets the buffer
-local variable `iron-main-panel-back' variable to FROM (which
-should be a panel/buffer itself.
+up a panel; it is called by applying it to the session
+attached to FROM and ARGS.  After calling the
+PANEL-START-FUNCTION, `iron-main-invoke-panel' assumes that Emacs
+has switched to a new panel/buffer and it sets the buffer local
+variable `iron-main-panel-back' variable to FROM (which should be
+a panel/buffer itself.
 
 The function returns a list containing two items: the current
 buffer (which should be the buffer associated to the panel
@@ -794,8 +869,14 @@ created by PANEL-START-FUNCTION, and FROM.
 If PANEL-FUNCTION is NIL, this is a no-op"
   
   (when panel-start-function
-    (apply panel-start-function args)
-    (setq-local iron-main-panel-back from)
+    (apply panel-start-function
+	   (iron-main-panel-get-session from)
+	   args)
+    (setq-local iron-main-panel-back
+		from
+
+		iron-main-panel-session
+		(iron-main-panel-get-session from))
     (list (current-buffer) from))
   )
 

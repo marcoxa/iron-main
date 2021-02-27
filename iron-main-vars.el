@@ -121,6 +121,18 @@ setups where the value of `iron-main-machine' is \"Hercules ...\"."
   )
 
 
+(defcustom iron-main-hercules-card-reader-port 3505
+  "The port where the Hercules 'card reader' listens to.
+
+Hercules usually has a 'card reader' configured to listen on a socket
+with default port number 3505 (the IBM card reader devide model
+number). This reader, if configured, can be used submit JCL directly,
+which is what IRON MAIN exploits in `jcl-mode'."
+  :group 'iron-main-hercules
+  :type  'integer
+  )
+
+
 ;;;; Epilogue
 ;;;; ========
 
