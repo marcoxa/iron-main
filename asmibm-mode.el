@@ -271,7 +271,7 @@ Not all features of HLASM are currently supported."
   ;; Start the IRON MAIN minor mode, which sets up the ruler and the
   ;; "card" editing limits, plus the fill-column indicator.
 
-  (iron-main-mode)
+  (when (fboundp 'iron-main-mode) (iron-main-mode))
 
   'asmibm-mode
   )

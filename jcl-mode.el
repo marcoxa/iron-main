@@ -319,10 +319,11 @@ selects them in case of 'continuation' cards that do not have the
 	      (reverse jcl-imenu-generic-expression))
   (imenu-add-to-menubar "JCL Code")
 
-  ;; Start the IRON MAIN minor mode, which sets up the ruler and the
-  ;; "card" editing limits, plus the fill-column indicator.
+  ;; If defined, start the IRON MAIN minor mode, which sets up the
+  ;; ruler and the "card" editing limits, plus the fill-column
+  ;; indicator.
 
-  (iron-main-mode)
+  (when (fboundp 'iron-main-mode) (iron-main-mode))
 
   'jcl-mode
   )
