@@ -63,8 +63,9 @@
 
 ;; Language mode files.
 
-(load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "asmibm-mode" iron-main-path))
+(load (expand-file-name "pl1-mode" iron-main-path))
+(load (expand-file-name "jcl-mode" iron-main-path))
 
 
 ;;;; Epilogue
