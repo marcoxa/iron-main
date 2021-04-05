@@ -7,7 +7,7 @@
 //* See file COPYING for licensing information.
 //*
 //HELLOCIX  JOB (1),'CIAO COBOL',
-//            USER=MARCOXA,PASSWORD=NMDCDNV,
+//            USER=MARCOXA,PASSWORD=XXX,
 //            CLASS=A,
 //            MSGCLASS=H,
 //            MSGLEVEL=(1,1)
