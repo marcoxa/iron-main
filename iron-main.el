@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20201228.1
+;; Version: 20210405.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -66,6 +66,7 @@
 (load (expand-file-name "asmibm-mode" iron-main-path))
 (load (expand-file-name "pl1-mode" iron-main-path))
 (load (expand-file-name "jcl-mode" iron-main-path))
+(load (expand-file-name "jcl-poly-mode" iron-main-path))
 
 
 ;;;; Epilogue
