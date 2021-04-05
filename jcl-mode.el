@@ -125,7 +125,7 @@ These are not really 'constants', as JCL does not really have them.")
 ;; The list is incomplete.
 
 (defvar jcl-operands
-  '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD"
+  '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD" "NOTIFY"
     "PGM" "COND"
     "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR" "DELETE" "DEL"
     "VOL" "VOLUME" "SER" "SERIAL"
