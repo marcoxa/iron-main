@@ -54,6 +54,18 @@
   "IRON MAIN session data for connections to IBM mainframes."
   )
 
+;;; iron-main-mts-session
+;; Just a placeholder for the time being.
+
+(cl-defstruct (iron-main-mts-session
+	       (:conc-name iron-main-mts-)
+	       (:include iron-main-hercules-session
+			 (machine "IBM z")
+			 (os-flavor "MTS"))
+	       )
+  "IRON MAIN session data for connections to MTS running on Hercules."
+  )
+
 
 ;;; iron-main-sessions
 ;; Global variable.
