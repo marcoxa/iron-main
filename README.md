@@ -19,12 +19,18 @@ to interact with the mainframe.
 
 **IRON MAIN** comprises the following:
 
-* **jcl-mode** (file `jcl-mode.el`): a major mode to handle IBM MVS or Z/OS
-  JCL.
+* **pl1-mode** (file `pl1-mode.el`): a major mode to handle PL/I code
+  (see file for more information, history and credits).
 * **asmibm-mode** (file `asmibm-mode.el`): a major mode to handle IBM
   Assemblers, at least in their barebone forms (no
   [HLASM](https://en.wikipedia.org/wiki/IBM_High_Level_Assembler) high
   level constructs yet).
+* **jcl-mode** (file `jcl-mode.el`): a major mode to handle IBM MVS or Z/OS
+  JCL.
+* **jcl-poly-mode** (file `jcl-poly-mode.el`): a major mode to handle
+  IBM MVS or Z/OS JCL based on `polymode.el'; *PL/I*, *COBOL*,
+  *Fortran* and *ASM* are supported as *inner modes*.
+
   
 Some tweaking was done to ensure that the column tracking and the
 ruler (cfr., `ruler-mode`) that is used in the various editing modes
@@ -44,9 +50,10 @@ Useful links follow.
   <https://en.wikipedia.org/wiki/IBM_Basic_Assembly_Language_and_successors>
 
 
-## jcl-mode
+## jcl-mode and jcl-poly-mode
 
-**jcl-mode** ia a major mode to handle IBM MVS or Z/OS JCL.
+**jcl-mode** and **jcl-poly-mode* are major modes to handle IBM MVS or
+Z/OS JCL.
 
 The basic "grammar" of JCL is the following, "line-oriented" one:
 
@@ -80,7 +87,8 @@ as a function) and `jcl-submit-file` (a misnomer; it should be
 "jcl-submit-dataset").  The two functions submit either the
 current buffer or a file of your choice to the "card reader".
 
-Files with `.jcl` extensions are opend in `jcl-mode`.
+Files with `.jcl` extensions are opened in `jcl-mode`. `jcl-poly-mode'
+can be entered by invoking the eponimous function.
 
 Most behavior is customizable in the "jcl" group.
 
@@ -92,8 +100,17 @@ instance.
 
 ## asmibm-mode
 
-**asmibm-mode** is a major mode to handle Asesmbler/IBM MVS or z/OS
+**asmibm-mode** is a major mode to handle Assembler/IBM MVS or z/OS
 ASM IBM.  The mode just does highlighting and some minor indentation.
+
+More functionalities may come in the future.
+
+
+## pl1-mode
+
+**pl1-mode** is a major mode to handle PL/I code.  The mode just does
+highlighting and some minor indentation.  Syntax recognized is quite
+limited, but most statements and attributes are properly highlighted.
 
 More functionalities may come in the future.
 
