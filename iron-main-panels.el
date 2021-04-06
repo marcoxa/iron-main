@@ -44,8 +44,16 @@
 
 (defvar iron-main-panel-mode-map
   (let ((km (make-sparse-keymap)))
-    (set-keymap-parent km widget-keymap))
-  "The IRON MAIN Panel mode key map.")
+    (set-keymap-parent km widget-keymap)
+    (define-key km (kbd "<f3>") 'iron-main-exit-panel)
+    (define-key km (kbd "q") 'iron-main-exit-panel)
+    (define-key km (kbd "Q") 'iron-main-exit-panel)
+    km
+    )
+  "The IRON MAIN Panel mode key map.
+
+The key map inherits from `widget-keymap'. The keys '<f3>' (that is,
+'PF3'), 'q' and 'Q' exit the current panel.")
 
 
 (defvar-local iron-main-panel-back nil
@@ -73,7 +81,11 @@ The value can be either a string or a symbol.")
   "IRON MAIN Panel Mode.
 
 Major mode for IRON MAIN Panels.  Mostly a container for variables
-and a specialized keymap."
+and a specialized keymap.
+
+You an use the function key `F3' (i.e., `PF3') or the [Qq] keys to
+exit a panel.  Exiting the top panel will exit the IRON MAIN
+interface."
 
   (setq-local iron-main-in-panel t
 	      iron-main-panel-back nil)
@@ -97,6 +109,38 @@ and a specialized keymap."
   (widget-insert (make-string 72 175))	; 175 is the "overline"
   (widget-insert "\n")
   )
+
+
+(defun iron-main-help-field ()
+  "Create the \"help\" field at the bottom of the window."
+  ;; Call last before `widget-setup'.
+
+  ;; The next one is a kludge to position the message on the "last"
+  ;; window without resorting (as I probably should) to more
+  ;; sophisticated Emacs techniques involving minibubber-less windows
+  ;; etc.
+
+  (let ((wh (window-total-height))
+	(lc (count-lines (window-start) (window-end)))
+	(lp-current (line-number-at-pos))
+	(lp-window-end (line-number-at-pos (window-end)))
+	)
+    (cond ((>= lc wh)
+	   (move-to-window-line -1)	; Lst visible line.
+	   )
+	  ((< lc wh)
+	   ;; Kludgy part: pad the buffer with newlines.
+	   (forward-line (- lp-window-end lp-current))
+	   (widget-insert (make-string (- wh lc) ?\n))
+	   (move-to-window-line -1)))
+    )
+
+  (widget-insert
+   (propertize (format "Use `[Qq]' or `PF3' to go back to previous panel.")
+	       'face '(fixed-pitch-serif :weight bold)
+	       ))
+  )
+
 
 
 (defun iron-main-dsname-item ()
@@ -644,7 +688,8 @@ This function is necessary because it is inexplicably absent from the
 
 
   ;; Let's start!
-  
+
+  ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
   (widget-setup)
   )
@@ -710,7 +755,7 @@ where the relevant bits and pieces used by the emulator can be found."
   (widget-insert "\n")
 
   (widget-insert "Command")
-  (widget-create 'integer :size 63 :tag "" :value ""
+  (widget-create 'integer :size 3 :tag "" :value ""
 		 :validate
 		 (lambda (cmd)
 		   (<= 1
