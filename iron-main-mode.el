@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20201206.1
+;; Version: 20210405.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -43,6 +43,7 @@
 
 ;;;; IRON MAIN Mode Setup.
 
+(require 'cl-lib)
 (require 'ruler-mode)
 (require 'iron-main-vars)
 (require 'iron-main-ruler-function)
