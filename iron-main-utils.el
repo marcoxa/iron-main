@@ -278,12 +278,14 @@ The command is issued synchronously with a TIMEOUT (cfr.,
   ;; The following CGI url was desumed from Hercules HTTP
   ;; implementation.
   
-  (let ((cmd-url
-	 (format "http://%s:%s/cgi-bin/tasks/cmd?cmd=%s"
-		 host
-		 port
-		 cmd))
-	)
+  (let* ((cmd-urlified
+	  (replace-regexp-in-string " " "%20" cmd))
+	 (cmd-url
+	  (format "http://%s:%s/cgi-bin/tasks/cmd?cmd=%s"
+		  host
+		  port
+		  cmd-urlified))
+	 )
     (ignore-errors
       (url-retrieve-synchronously cmd-url nil nil timeout)))
   )
