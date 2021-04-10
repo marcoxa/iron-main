@@ -52,7 +52,7 @@
     )
   "The IRON MAIN Panel mode key map.
 
-The key map inherits from `widget-keymap'. The keys '<f3>' (that is,
+The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 'PF3'), 'q' and 'Q' exit the current panel.")
 
 
@@ -94,8 +94,9 @@ interface."
   )
 
 
-(defun iron-main-panel-title (&optional title)
-  "Create the the IRON MAIN panel title."
+(defun iron-main--panel-title (&optional title)
+  "Create the the IRON MAIN panel title using argument TITLE."
+  
   (unless title
     (setq title "Top"))
   ;; (widget-insert "\n")
@@ -111,7 +112,9 @@ interface."
   )
 
 
-(defun iron-main-help-field ()
+;; Unused
+
+(defun iron-main--help-field ()
   "Create the \"help\" field at the bottom of the window."
   ;; Call last before `widget-setup'.
 
@@ -142,7 +145,6 @@ interface."
   )
 
 
-
 (defun iron-main-dsname-item ()
   "Create the `dsname' editable-field widget in the IRON MAIN panel."
   (setq dsname-widget
@@ -162,7 +164,7 @@ interface."
 ;;   (let ((inhibit-read-only t))
 ;;     (erase-buffer))
 
-;;   (iron-main-panel-title)
+;;   (iron-main--panel-title)
   
 ;;   (iron-main-dsname-item)
 			 
@@ -207,7 +209,7 @@ interface."
   (let ((inhibit-read-only t))
     (erase-buffer))
 
-  (iron-main-panel-title "Dataset panel")
+  (iron-main--panel-title "Dataset panel")
   
   (iron-main-dsname-item)
 			 
@@ -426,12 +428,13 @@ interface."
                  "Allocate and Save")
   (widget-insert "    ")
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (message "Cancelled dataset '%s' allocation in the mainframe."
-				    (iron-main-ds-rep-name
-				     iron-main-current-ds)
-				    )
-			   )
+                 :notify
+		 (lambda (&rest ignore)
+		   (message "Cancelled dataset '%s' allocation in the mainframe."
+			    (iron-main-ds-rep-name
+			     iron-main-current-ds)
+			    )
+		   )
                  "Cancel")
 
   (widget-insert "\n")
@@ -451,7 +454,7 @@ interface."
   (let ((inhibit-read-only t))
     (erase-buffer))
 
-  (iron-main-panel-title "Dataset Panel")
+  (iron-main--panel-title "Dataset Panel")
   
   (iron-main-dsname-item)
 			 
@@ -498,42 +501,6 @@ interface."
   )
 
 
-;; (defun iron-main-frame-panel (&optional dasd-dir)
-;;   "Create the 'top' IRON MAIN panel.
-
-;; With an Hercules MVS installation the variable `iron-main-dasd-dir' is
-;; set to DASD-DIR; if  `iron-main-dasd-dir' is not set properly the IRON
-;; MAIN package will have limited functionality."
-  
-;;   (interactive
-;;    (if (string= "Hercules" iron-main-machine)
-;;      (let ((d (read-directory-name
-;; 	       "IRON MAIN: DASDs folder name: "
-;; 	       iron-main-dasd-dir
-;; 	       nil
-;; 	       t)))
-;;        (list d))
-;;      (list iron-main-dasd-dir)
-;;      ))
-
-;;   (switch-to-buffer "*IRON MAIN*")
-  
-;;   (kill-all-local-variables)
-;;   ;; (make-local-variable 'panel-iron-main-repeat)
-;;   (let ((inhibit-read-only t))
-;;     (erase-buffer))
-;;   (iron-main-panel-mode)
-;;   (iron-main-panel-title)
-;;   (widget-insert "My Emacs thinks it's an ISPF!\n\n")
-;;   (iron-main-set-dasd-dir dasd-dir)
-
-;;   (widget-insert "DASDs:\n")
-;;   (insert-directory iron-main-dasd-dir "" nil t)
-;;   )
-
-
-(defvar iron-main-instance-banner "")
-
 (defvar-local iron-main-hercules-pid nil
   "The PID of the Hercules process.  NIL if it is not running or reachable.")
 
@@ -574,7 +541,10 @@ This function is necessary because it is inexplicably absent from the
 				 (machine iron-main-machine)
 				 (os-flavor iron-main-os-flavor)
 				 &aux (from-buffer (current-buffer)))
-  "Create the 'top' IRON MAIN panel."
+  "Create the 'top' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   
   (interactive)
 
@@ -673,7 +643,7 @@ This function is necessary because it is inexplicably absent from the
 		  iron-main-os-flavor))
     )
   
-  (iron-main-panel-title)
+  (iron-main--panel-title)
   (widget-insert iron-main-instance-banner)
   (widget-insert "\n")
   
@@ -691,7 +661,8 @@ This function is necessary because it is inexplicably absent from the
 
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
-  (widget-setup)
+  (prog1 (widget-setup)
+    (widget-forward 1))
   )
 
 
@@ -711,6 +682,8 @@ This function is necessary because it is inexplicably absent from the
      :header "Inspect Hercules system/machine")
     ("Datasets" iron-main--hercules-os-fds-utilities
      :header "Handle files and datasets across systems")
+    ("Help" iron-main--hercules-help
+     :header "Hercules help")
     ("Exit"   iron-main-exit-panel
      :header "Exit the IRON MAIN current panel or top-level"
      :notify ,(lambda (w &rest args)
@@ -820,15 +793,250 @@ where the relevant bits and pieces used by the emulator can be found."
     )
   )
 
+(defvar-local iron-main--hs-devinfo-ins-pt nil)
+
+
+(defun iron-main--hercules-clean-devlist (devtype devlist-string)
+   "Remove extra noise that is generated for a teminal output and format.
+
+DEVTYPE is one of the \"devlist\" possible arguments; DEVLIST-STRING
+is the string result from invoking the command to the running Hercules."
+
+  ;; To understand this processing, check the output of the Hercules
+  ;; command "devlist DEVTYPE".
+
+  ;; Readability first!!!
+  (let ((result "")
+	)
+    ;; Remove information header.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC0160[23]I +devlist.*$"
+	   ""
+	   devlist-string))
+    ;; Remove extra message for empty lists.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC00007I.+$"
+	   ""
+	   result))
+
+    ;; Remove "Empty list" mgs type.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC02312W "
+	   ""
+	   result))
+
+    ;; Remove list lines msg type.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC02279I "
+	   ""
+	   result))
+
+    ;; Remove blank lines (if it works).
+    (setq result
+	  (replace-regexp-in-string (rx bol ?\n)
+				    ""
+				    result))
+
+    ;; Now we format depending on `devtype'
+    (cond ((string-equal devtype "DASD")
+	   (message "IMHSP2I: formatting DASD list.")
+	   (setq result
+		 (iron-main--format-dasd-list result))
+	   )
+	  (t
+	   ;; Noting fttb
+	   (message "IMHSP2I: formatting %s list." devtype)
+	   (setq result
+		 (format "Available %ss.\n\n%s"
+			 devtype
+			 result))
+	   )
+	  )
+    result
+    ))
+
+
+(defun iron-main--format-dasd-list (dasdlist)
+  "Format the string DASDLIST in columns."
+  ;; Very simple minded FTTB.
+  ;;
+  ;; `dasdlist' is a string with lines like:
+  ;;
+  ;; 0:0133 2314 dasd/sort03.133 [203 cyls] [0 sfs] IO[23] open
+  ;; 0:0134 2314 dasd/sort04.134 [203 cyls] [0 sfs] IO[23] open
+  ;;
+  ;; where the 7 columns are:
+  ;;
+  ;; DEVID MODEL HOSTFOLDER CYL SFS IO(channels?) STATUS
+
+  (let ((result "")
+	;; I should rewrite the next regexp breaking it up and using
+	;; RX.
+	(col-regexp
+	 "\\([:0-9A-Z]+\\) \\([0-9]+\\) \\(.+\\) \\(\\[[^]]+?\\]\\) \\(\\[[^]]+?\\]\\) \\(IO\\[[^]]+?\\]\\) \\(.+\\)")
+	(result-regexp
+	 "\\1\t\\2\t\\3\t\\4\t\\5\t\\6\t\\7")
+	)
+    (setf result
+	  (replace-regexp-in-string col-regexp
+				    result-regexp
+				    dasdlist))
+    
+    ;; Not quite right yet, but gettng there...
+    (format "%s\n%s"
+	    "DEVID\tMODEL\tHOST FOLDER\tCYL\tSFS\tIO(channels)\tSTATUS"
+	    result)
+    ))
+
 
 (cl-defun iron-main--hercules-system (session &rest args)
-  "Hercules system inpection panel."
+  "Hercules system inspection panel.
+
+Given a SESSION sets up the \"system\" panel.  ARGS are passed downstream
+if needed."
 
   (cl-assert (iron-main-session-p session) t
 	     "SESSION %S is not a `iron-main-session'"
 	     session)
 
   (switch-to-buffer "*IRON MAIN Hercules system*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-panel-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-panel-session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session)
+	      iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-panel-tag "Hercules system")
+  
+  (iron-main--panel-title "Hercules system")
+
+  ;; Let's start!
+
+  ;; (when (iron-main-running-machine "Hercules")
+  ;;   (iron-main--hercules-top-subpanel iron-main-hercules-os-dir
+  ;; 				      iron-main-hercules-dasd-dir))
+
+  ;; Devices retrievable from the Hercules command 'devlist'.
+  ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
+
+  (let ((devtypes
+	 (list "CTCA" "DASD" "DSP" "FCP" "LINE" "OSA" "PCH" "PRT"
+	       "RDR" "TAPE"))
+	)
+  
+    (widget-insert "Available devices\n\n")
+
+    (dolist (devtype devtypes)
+      (widget-create 'push-button
+		     :notify
+		     (lambda (w cw &rest ignore)
+		       (message ">>> Pressed %s" (widget-value w))
+
+		       (let ((dev-list
+			      (iron-main-hercules-devlist (widget-value w)))
+			  
+			     (dev-list-clean "")
+			     )
+			 (when dev-list
+			   (when iron-main--hs-devinfo-ins-pt
+			     ;; (message ">>> Clean %s devlist." (widget-value w))
+			     (setq dev-list-clean
+				   (iron-main--hercules-clean-devlist
+				    (widget-value w)
+				    dev-list))
+			     ;; (message ">>> Cleaned helpstring.")
+			     (goto-char iron-main--hs-devinfo-ins-pt)
+			     (save-excursion
+			       (let ((inhibit-read-only t)
+				     (inhibit-modification-hooks t)
+				     )
+				 (delete-region iron-main--hs-devinfo-ins-pt
+			    			(point-max))))
+					 
+			     (save-excursion
+			       ;; Clean up "HHC0*I" messages before inserting.
+			       (widget-insert dev-list-clean)
+			       )))
+			 ))
+		     devtype)
+      (widget-insert "  "))
+
+    (widget-insert "\n\n")
+    (setq-local iron-main--hs-devinfo-ins-pt (point))
+    )
+  
+  (message "IMHS00I: Hercules system.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
+  )
+
+
+(defvar-local help-ins-pt nil)
+(defvar-local help-cmd-widget nil)
+
+(defun iron-main--hercules-clean-help (helpstring)
+  "Remove extra noise that is generated for a teminal output.
+
+The Hercules \"help\" command formats its output assuming a teminal
+output; HELPSTRING contains such output and is cleaned up for
+presentation in the IRON MAIN panel/buffer."
+
+  ;; To understand this processing, check the output of the Hercules
+  ;; commands "help" and "help <cmd>".
+
+  ;; Readability first!!!
+  (let ((result ""))
+    ;; Remove line headers.
+    (setf result
+	  (replace-regexp-in-string
+	   "HHC0160[23]I "
+	   ""
+	   helpstring))
+
+    ;; Remove header line.
+    (setf result
+	  (replace-regexp-in-string
+	   "^help *[a-zA-Z0-9]*$"
+	   ""
+	   result))
+
+    ;; Remove extra help line in "help" result.
+    (setf result
+	  (replace-regexp-in-string
+	   "^HHC01610I .+$"
+	   ""
+	   result))
+    
+    result
+  ))
+
+
+(cl-defun iron-main--hercules-help (session &rest args)
+  "Hercules help panel.
+
+Given a SESSION sets up the \"help\" panel.  ARGS are passed downstream
+if needed."
+
+  (cl-assert (iron-main-session-p session) t
+	     "SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN Hercules help*")
 
   (kill-all-local-variables)
 
@@ -845,16 +1053,66 @@ where the relevant bits and pieces used by the emulator can be found."
 	      iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
-  (setq-local iron-main-panel-tag "Hercules system")
+  (setq-local iron-main-panel-tag "Hercules help")
   
-  (iron-main-panel-title "Hercules system")
+  (iron-main--panel-title "Hercules help")
 
   ;; Let's start!
 
-  (message "IMHS00I: Hercules system.")
-  (widget-setup)
-  )
+  (setq-local help-ins-pt (point))
 
+  ;; (message ">>> Point %s" help-ins-pt)
+  (setq-local
+   help-cmd-widget
+   (widget-create 'editable-field
+		  :size 10
+		  :format "Hercules command (empty for a list): %v"
+		  :action
+		  (lambda (w &rest ignore)
+		    (if (string-equal "" (widget-value w))
+			(message "IMHS00I: Getting help for '%s' (%s)."
+				 (widget-value w)
+				 help-ins-pt)
+		      (message "IMHS00I: Available commands... (%s)"
+			       help-ins-pt)
+		      )
+		    (let ((helpstring
+			    (iron-main-hercules-help (widget-value w)))
+			  
+			  (helpstring-clean "")
+			  )
+		      (when helpstring
+			(when help-ins-pt
+			  ;; (message ">>> Clean helpstring.")
+			  (setq helpstring-clean
+				(iron-main--hercules-clean-help
+				 helpstring)
+				)
+			  ;; (message ">>> Cleaned helpstring.")
+			  (goto-char help-ins-pt)
+			  (save-excursion
+			    (let ((inhibit-read-only t)
+				  (inhibit-modification-hooks t)
+				  )
+			      (delete-region help-ins-pt
+			    		     (point-max))))
+					 
+			  (save-excursion
+			    ;; Clean up "HHC0*I" messages before inserting.
+			    (widget-insert helpstring-clean)
+			    )))
+		      ))		; Lambda
+		  ""			; Initial value.
+		  )
+   )
+	
+  (widget-insert "\n")
+  (setq help-ins-pt (point))
+  
+  (message "IMHS00I: Hercules help.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
+  )
 
 
 ;;; Panel navigation.
@@ -869,7 +1127,7 @@ effect.  If the 'back' buffer is not live"
 
   (interactive)
 
-  (message ">>> Exiting %S" panel-to-exit)
+  (message "IMPF01I Exiting %S" panel-to-exit)
   (with-current-buffer panel-to-exit
     (message ">>> in-panel %S, panel-tag %S, back %S, live %S"
 	     iron-main-in-panel
