@@ -36,6 +36,9 @@
 ;; commands are essentially "query" and "display" commands that do not
 ;; modify the state of the Hercules instance.
 ;;
+;; In general "query" commands return strings or numbers, while
+;; "display" commands return buffers that can then be used later on.
+;;
 ;; Not all commands available are implemented.  Please refer to the
 ;; "Hercules – User Reference Guide" and to the
 ;; "Hercules – Operations and Utilities Guide", either the (a bit old)
@@ -86,22 +89,42 @@ in the KEYS &rest variable."
 ;; string or a list of strings -- and those that switch to another
 ;; buffer/panel showing the output (the "help" command is one of
 ;; these).
+;;
+;; Notes:
+;; 20210406: MA: implementation of -help command still incomplete.
 
-(define-hercules-cmd "help" ()
-  "Return result of running the Hercules 'help' command.
 
-The value returned is a string containing the host system process id
-or NIL if the command could not be issued (most likely because there
-is no running Hercules instance)."
-  (let ((cmdbuf (apply 'iron-main-hercules-cmd "help" keys)))
-    (when cmdbuf
-      (with-current-buffer cmdbuf
-	(goto-char (point-min))
-	(let ((pid-re "HHC17013I Process ID = \\([0-9]+\\)"))
-	  (re-search-forward pid-re)
-	  (match-string 1)
-	  )))
+(defun iron-main--cmd (cmd-string &rest string-args)
+  (with-output-to-string
+    (princ cmd-string)
+    (dolist (sa string-args)		; Maybe remove empty string?
+      (princ " ")
+      (princ sa))
     ))
+
+
+(defun iron-main--get-html-pre-output (buffer)
+  (with-current-buffer buffer
+    (message ">>> CMD result buffer %S" buffer)
+    (goto-char (point-min))
+    (let* ((pre-start "<PRE>")
+	   (pre-end   "</PRE>")
+	   (pre-start-point (search-forward pre-start nil t))
+	   (pre-end-point   (search-forward pre-end nil t))
+	   )
+      (if (and pre-start-point pre-end-point)
+	  (buffer-substring pre-start-point (- pre-end-point 6))
+	"")
+      )))
+
+
+(define-hercules-cmd "help" (&optional (cmd ""))
+  "Return result of running the Hercules 'help' command."
+  (let* ((helpcmd (iron-main--cmd "help" cmd))
+	 (cmdbuf (apply 'iron-main-hercules-cmd helpcmd keys))
+	 )
+    (when cmdbuf
+      (iron-main--get-html-pre-output cmdbuf))))
 
 
 (define-hercules-cmd "qpid" ()
@@ -121,8 +144,13 @@ is no running Hercules instance)."
     ))
 
 
-	 
-    
+(define-hercules-cmd "devlist" (&optional (class-or-id ""))
+  "Return result of running the Hercules 'devlist' command."
+  (let* ((devlistcmd (iron-main--cmd "devlist" class-or-id))
+	 (cmdbuf (apply 'iron-main-hercules-cmd devlistcmd keys))
+	 )
+    (when cmdbuf
+      (iron-main--get-html-pre-output cmdbuf))))
   
 
 ;;;; Epilogue
