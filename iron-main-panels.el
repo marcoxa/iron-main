@@ -155,47 +155,6 @@ interface."
 		       )))
 
 
-;; (defun panel-iron-main ()
-;;   "Create the widgets from the Widget manual."
-;;   (interactive)
-;;   (switch-to-buffer "*IRON MAIN example*")
-;;   (kill-all-local-variables)
-;;   (make-local-variable 'panel-iron-main-repeat)
-;;   (let ((inhibit-read-only t))
-;;     (erase-buffer))
-
-;;   (iron-main--panel-title)
-  
-;;   (iron-main-dsname-item)
-			 
-;;   (widget-insert "\n\n")
-  
-;;   (widget-create 'push-button
-;;                  :notify (lambda (&rest ignore)
-;; 			   (message "Data set name: <%s>."
-;; 				    (widget-value dsname-widget)
-;; 				    ))
-;;                  "Allocate")
-;;   (widget-insert "    ")
-;;   (widget-create 'push-button
-;;                  :notify (lambda (&rest ignore)
-;; 			   (message "Data set name: %s."
-;; 				    (widget-value dsname-widget)
-;; 				    ))
-;;                  "Allocate and Save")
-;;   (widget-insert "    ")
-;;   (widget-create 'push-button
-;;                  :notify (lambda (&rest ignore)
-;; 			   (message "Data set name: %s."
-;; 				    (widget-value dsname-widget)
-;; 				    ))
-;;                  "Save")
-;;   (widget-insert "\n")
-;;   (use-local-map widget-keymap)
-;;   (widget-setup)
-;;   )
-
-
 (defvar iron-main-ds-allocation-dsorg "PDS"
   "The default data set organization (DSORG).")
 
