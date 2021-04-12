@@ -52,7 +52,7 @@ Useful links follow.
 
 ## jcl-mode and jcl-poly-mode
 
-**jcl-mode** and **jcl-poly-mode* are major modes to handle IBM MVS or
+**jcl-mode** and **jcl-poly-mode** are major modes to handle IBM MVS or
 Z/OS JCL.
 
 The basic "grammar" of JCL is the following, "line-oriented" one:
