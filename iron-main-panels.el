@@ -1,5 +1,5 @@
-;;; iron-main-panels.el --- IRON MAIN "panels" for mainframe interaction.
 ;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
+;;; iron-main-panels.el --- IRON MAIN "panels" for mainframe interaction.
 
 ;;; iron-main-panels.el
 ;;
@@ -30,6 +30,8 @@
 
 ;;; Code:
 
+(setq lexical-binding t)		; Just to be extra sure.
+
 (require 'cl-lib)
 
 (eval-when-compile
@@ -39,7 +41,7 @@
 (require 'iron-main-vars)
 
 
-;;; Panels.
+;;; IRON MAIN panels.
 ;;
 ;; "Panel" is mainframe-speak for "page", or in the context of Emacs,
 ;; "window/buffer".
@@ -66,6 +68,8 @@
 (defvar iron-main-panels--secondary-widget nil)
 (defvar iron-main-panels--dir-widget nil)
 
+
+;;; IRON MAIN panel keymaps.
 
 (defvar iron-main-panels-mode-keymap
   (let ((km (make-sparse-keymap)))
@@ -97,6 +101,10 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 'PF3'), 'q' and 'Q' exit the current panel.")
 
 
+;;; Buffer local variables.
+
+;; Navigation.
+
 (defvar-local iron-main-panels--back nil
   "Local panel variable set by the 'invoking' panel."
   ;; Pretty crude for the time being.
@@ -116,7 +124,116 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 The value can be either a string or a symbol.")
 
 
-;; iron-main-panel-mode
+;;; Commands alists.
+;;
+;; Commands alists are lists of "specifications" for link widgets to
+;; insert in a panel.
+;; Their format is:
+;;
+;;    (cmd function &rest keys)
+;;
+;; Where CMD is a string, FUNCTION a "panel invocation" function and
+;; KEYS a list of key-value pairs to be used for `widget-create'.
+
+(defvar iron-main-panels--hercules-top-commands
+  `(("System" iron-main-panels--hercules-system
+     :header "Inspect Hercules system/machine")
+    ("Datasets" iron-main-panels--hercules-dsfs-utilities
+     :header "Handle files and datasets across systems")
+    ("Help" iron-main-panels--hercules-help
+     :header "Hercules help")
+    ("Exit"   iron-main-panels--exit-panel
+     :header "Exit the IRON MAIN current panel or top-level"
+     :notify ,(lambda (w &rest args)
+		(ignore w args)
+		(iron-main-panels--exit-panel)))
+    )
+  "A 'commands alist' for the IRON MAIN top panel."
+  )
+
+
+(defvar iron-main-panels--hercules-dsfs-commands
+  `(
+    ("Exit"   iron-main-panels--exit-panel
+     :header "Exit the IRON MAIN current panel or top-level"
+     :notify ,(lambda (w &rest args)
+		(ignore w args)
+		(iron-main-panels--exit-panel)))
+    )
+  "A 'commands alist' for the IRON MAIN dtaset and filesystem  panel."
+  )
+
+
+(defun iron-main-panels--find-command (cmd commands-alist)
+  (assoc cmd commands-alist 'string=))
+
+
+(defun iron-main-panels--command-field (cmd-alist cmds-links)
+  (widget-insert "Command")
+  (widget-create 'integer :size 3 :tag "" :value ""
+		 :validate
+		 (lambda (cmd)
+		   (<= 1 (widget-value cmd) (length cmd-alist)))
+		 
+		 :action
+		 (lambda (cmd &optional event)
+		   (ignore event)
+		   (message ">>> notified")
+		   ;; (sleep-for 3)
+		   (let* ((cmd-widget
+			   (nth (1- (widget-value cmd)) cmds-links))
+			  (cmd-notify
+			   (iron-main-panels--widget-notify cmd-widget))
+			  )
+		     (message ">>> calling %s on %s"
+		      	      cmd-notify
+		     	      cmd-widget)
+		     (when cmd-notify
+		       (apply cmd-notify cmd-widget ()))
+		     ))
+		 :keymap
+		 iron-main-panels-editable-field-keymap
+		 )
+  
+  (widget-insert "\n\n")
+  )
+
+
+(defun iron-main-panels--insert-command-widgets (cmd-alist)
+  (cl-loop for option in cmd-alist
+	   for opt-i from 1
+	   for header = (plist-get option :header)
+	   for notify = (plist-get option :notify)
+	   do
+	   (widget-insert (format "%3d. " opt-i))
+	   collect
+	   (widget-create 'link
+			  :format "%[%t%]\t: %v"
+			  :tag (cl-first option)
+			  :value header
+			  :button-prefix ""
+			  :button-suffix ""
+			  :notify
+			  (if notify
+			      notify
+			    (lambda (w &rest args)
+			      (ignore args)
+			      (let ((panel-function
+				     (cl-second
+				      (iron-main-panels--find-command
+				       (iron-main-panels--widget-tag w)
+				       cmd-alist)))
+				    )
+				(iron-main-panels--invoke-panel
+				 (current-buffer)
+				 panel-function)
+				))))
+	   do
+	   (widget-insert "\n")
+	   ))
+
+
+;;; iron-main-panel-mode
 ;; The main mode (major) for the panels.
 
 (define-derived-mode iron-main-panel-mode nil "//IRON-MAIN"
@@ -132,7 +249,6 @@ interface."
   (setq-local iron-main-panels--in-panel t
 	      iron-main-panels--back nil)
 
-  (message ">>> Using local map...")
   (use-local-map iron-main-panels-mode-keymap)
   )
 
@@ -141,6 +257,8 @@ interface."
 ;; The actual panels available.
 ;; The "fields" (or "widgets") of each panel have (function) names
 ;; that end in "-field" or "-widget".
+
+;; title-field
 
 (defun iron-main-panels--title-field (&optional title)
   "Create the the IRON MAIN panel title using argument TITLE."
@@ -160,7 +278,8 @@ interface."
   )
 
 
-;; Unused
+;; help-field
+;; Unused.
 
 (defun iron-main-panels--help-field ()
   "Create the \"help\" field at the bottom of the window."
@@ -193,6 +312,9 @@ interface."
   )
 
 
+;; Datasets and file system handling panel.
+;; ----------------------------------------
+
 (defun iron-main-panels--dsname-item-field ()
   "Create the `dsname' editable-field widget in the IRON MAIN panel."
   (setq iron-main-panels--dsname-widget
@@ -223,6 +345,8 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (interactive)
 
+  (ignore args)
+  
   (cl-assert (iron-main-session-p session) t
 	     "SESSION %S is not a `iron-main-session'"
 	     session)
@@ -252,8 +376,16 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (widget-insert "\n")
 
-  (make-local-variable 'iron-main-panels--hercules-dsfs-cmds-links)
+  ;; Let's start!
 
+  (make-local-variable 'iron-main-panels--hercules-dsfs-cmds-links)
+  ;; NOTE: the above variable should become generalized and panel
+  ;; (i.e., buffer) local.
+
+  (iron-main-panels--command-field
+   iron-main-panels--hercules-dsfs-commands
+   iron-main-panels--hercules-dsfs-cmds-links)
+  
   (setq-local iron-main-panels--hercules-dsfs-cmds-links
 	      (iron-main-panels--insert-command-widgets
 	       iron-main-panels--hercules-dsfs-commands))
@@ -286,6 +418,7 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-panels--current-ds)
 		       :size 3
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "RECF: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-recfm
@@ -306,6 +439,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "LRECL: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-lrecl
@@ -325,6 +459,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :size 6
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "BLKSIZE: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-blksize
@@ -346,6 +481,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :indent 4
 		       :help-echo "Choose the dataset organization"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "Dataset organization: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-dsorg
@@ -391,6 +527,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :indent 4
 		       :help-echo "Choose the dataset space unit"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "Dataset space unit: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-space-unit
@@ -426,6 +563,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :size 8
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "Primary: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-primary
@@ -444,6 +582,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :size 8
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "Secondary: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-secondary
@@ -461,6 +600,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :size 4
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
 				 (message "Directory blocks: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-directory
@@ -479,6 +619,7 @@ file system(s) that Emacs has direct access to; most notably, the
   
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (setf (iron-main-ds-rep-name
 				  iron-main-panels--current-ds)
 				 (widget-value iron-main-panels--dsname-widget)
@@ -493,6 +634,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (message "JCL buffer for '%s': ...."
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
@@ -501,6 +643,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (message "Data set name: %s."
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
@@ -512,6 +655,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-create 'push-button
                  :notify
 		 (lambda (&rest ignore)
+		   (ignore ignore)
 		   (message "Cancelled dataset '%s' allocation in the mainframe."
 			    (iron-main-ds-rep-name
 			     iron-main-panels--current-ds)
@@ -553,6 +697,7 @@ file system(s) that Emacs has direct access to; most notably, the
   
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (message "DD: <%s>."
 				    (iron-main-ds-to-string
 				     iron-main-panels--current-ds)
@@ -561,6 +706,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (message "JCL buffer for '%s' and '%s': ...."
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
@@ -571,6 +717,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
+			   (ignore ignore)
 			   (message "Saving dataset '%s' to mainframe cancelled."
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
@@ -583,6 +730,9 @@ file system(s) that Emacs has direct access to; most notably, the
   (widget-setup)
   )
 
+
+;; IRON MAIN frame main, top panel.
+;; --------------------------------
 
 (defvar-local iron-main-hercules-pid nil
   "The PID of the Hercules process.  NIL if it is not running or reachable.")
@@ -618,6 +768,10 @@ Notes:
 This function is necessary because it is inexplicably absent from the
 `widget.el' library."
   (plist-get (cdr w) :notify))
+
+
+(defvar-local iron-main-panels--hercules-top-cmds-links ()
+  "List of link widgets created for top panel commands.")
 
 
 (cl-defun iron-main-frame (&optional
@@ -768,91 +922,17 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 
   ;; Let's start!
 
+  (make-local-variable 'iron-main-panels--hercules-top-cmds-links)
+
+  (setq-local iron-main-panels--hercules-top-cmds-links
+	      (iron-main-panels--insert-command-widgets
+	       iron-main-panels--hercules-top-commands))
+
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
   (prog1 (widget-setup)
     (widget-forward 1))
   )
-
-
-;;; Commands alists.
-;;
-;; Commands alists are lists of "specifications" for link widgets to
-;; insert in a panel.
-;; Their format is:
-;;
-;;    (cmd function &rest keys)
-;;
-;; Where CMD is a string, FUNCTION a "panel invocation" function and
-;; KEYS a list of key-value pairs to be used for `widget-create'.
-
-(defvar iron-main-panels--hercules-top-commands
-  `(("System" iron-main-panels--hercules-system
-     :header "Inspect Hercules system/machine")
-    ("Datasets" iron-main-panels--hercules-dsfs-utilities
-     :header "Handle files and datasets across systems")
-    ("Help" iron-main-panels--hercules-help
-     :header "Hercules help")
-    ("Exit"   iron-main-panels--exit-panel
-     :header "Exit the IRON MAIN current panel or top-level"
-     :notify ,(lambda (w &rest args)
-		(iron-main-panels--exit-panel)))
-    )
-  "A 'commands alist' for the IRON MAIN top panel."
-  )
-
-
-(defvar iron-main-panels--hercules-dsfs-commands
-  `(
-    ("Exit"   iron-main-panels--exit-panel
-     :header "Exit the IRON MAIN current panel or top-level"
-     :notify ,(lambda (w &rest args)
-		(iron-main-panels--exit-panel)))
-    )
-  "A 'commands alist' for the IRON MAIN dtaset and filesystem  panel."
-  )
-
-
-(defun iron-main-panels--find-command (cmd commands-alist)
-  (assoc cmd commands-alist 'string=))
-
-
-(defun iron-main-panels--insert-command-widgets (cmd-alist)
-  (cl-loop for option in cmd-alist
-	   for opt-i from 1
-	   for header = (plist-get option :header)
-	   for notify = (plist-get option :notify)
-	   do
-	   (widget-insert (format "%3d. " opt-i))
-	   collect
-	   (widget-create 'link
-			  :format "%[%t%]\t: %v"
-			  :tag (cl-first option)
-			  :value header
-			  :button-prefix ""
-			  :button-suffix ""
-			  :notify
-			  (if notify
-			      notify
-			    (lambda (w &rest args)
-			      (let ((panel-function
-				     (cl-second
-				      (iron-main-panels--find-command
-				       (iron-main-panels--widget-tag w)
-				       cmd-alist)))
-				    )
-				(iron-main-panels--invoke-panel
-				 (current-buffer)
-				 panel-function)
-				))))
-	   into cmd-links
-	   do
-	   (widget-insert "\n")
-	   ))
-
-
-(defvar-local iron-main-hercules-top-cmds-links ()
-  "List of link widgets created for top panel commands.")
 
 
 (defun iron-main-panels--hercules-top-subpanel (os-dir dasd-dir)
@@ -861,6 +941,8 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 The arguments OS-DIR and DASD-DIR are referring to the directories
 where the relevant bits and pieces used by the emulator can be found."
 
+  (ignore os-dir dasd-dir)
+  
   ;; This function is just a code organization/refactoring tool.   Do
   ;; not call by itself.
 
@@ -891,17 +973,18 @@ where the relevant bits and pieces used by the emulator can be found."
 		 
 		 :action
 		 (lambda (cmd &optional event)
-		   ;; (message ">>> notified")
+		   (ignore event)
+		   (message ">>> notified")
 		   ;; (sleep-for 3)
 		   (let* ((cmd-widget
 			   (nth (1- (widget-value cmd))
-				iron-main-hercules-top-cmds-links))
+				iron-main-panels--hercules-top-cmds-links))
 			  (cmd-notify
 			   (iron-main-panels--widget-notify cmd-widget))
 			  )
-		     ;; (message ">>> calling %s on %s"
-		     ;; 	      cmd-notify
-		     ;; 	      cmd-widget)
+		     (message ">>> calling %s on %s"
+		      	      cmd-notify
+		     	      cmd-widget)
 		     (when cmd-notify
 		       (apply cmd-notify cmd-widget ()))
 		     ))
@@ -911,42 +994,42 @@ where the relevant bits and pieces used by the emulator can be found."
 		       
   (widget-insert "\n\n")
 
-  (make-local-variable 'iron-main-hercules-top-cmds-links)
+  ;; (make-local-variable 'iron-main-hercules-top-cmds-links)
   
-  (cl-loop for option in iron-main-panels--hercules-top-commands
-	   for opt-i from 1
-	   for header = (plist-get option :header)
-	   for notify = (plist-get option :notify)
-	   do
-	   (widget-insert (format "%3d. " opt-i))
-	   collect
-	   (widget-create 'link
-			  :format "%[%t%]\t: %v"
-			  :tag (cl-first option)
-			  :value header
-			  :button-prefix ""
-			  :button-suffix ""
-			  :notify
-			  (if notify
-			      notify
-			    (lambda (w &rest args)
-			      (let ((panel-function
-				     (cl-second
-				      (iron-main-panels--find-command
-				       (iron-main-panels--widget-tag w)
-				       iron-main-panels--hercules-top-commands)))
-				    )
-				(iron-main-panels--invoke-panel
-				 (current-buffer)
-				 panel-function)
-				))))
-	   into cmd-links
-	   do
-	   (widget-insert "\n")
-	   finally
-	   (setq-local iron-main-hercules-top-cmds-links
-		       cmd-links)
-    )
+  ;; (cl-loop for option in iron-main-panels--hercules-top-commands
+  ;; 	   for opt-i from 1
+  ;; 	   for header = (plist-get option :header)
+  ;; 	   for notify = (plist-get option :notify)
+  ;; 	   do
+  ;; 	   (widget-insert (format "%3d. " opt-i))
+  ;; 	   collect
+  ;; 	   (widget-create 'link
+  ;; 			  :format "%[%t%]\t: %v"
+  ;; 			  :tag (cl-first option)
+  ;; 			  :value header
+  ;; 			  :button-prefix ""
+  ;; 			  :button-suffix ""
+  ;; 			  :notify
+  ;; 			  (if notify
+  ;; 			      notify
+  ;; 			    (lambda (w &rest args)
+  ;; 			      (let ((panel-function
+  ;; 				     (cl-second
+  ;; 				      (iron-main-panels--find-command
+  ;; 				       (iron-main-panels--widget-tag w)
+  ;; 				       iron-main-panels--hercules-top-commands)))
+  ;; 				    )
+  ;; 				(iron-main-panels--invoke-panel
+  ;; 				 (current-buffer)
+  ;; 				 panel-function)
+  ;; 				))))
+  ;; 	   into cmd-links
+  ;; 	   do
+  ;; 	   (widget-insert "\n")
+  ;; 	   finally
+  ;; 	   (setq-local iron-main-hercules-top-cmds-links
+  ;; 		       cmd-links)
+  ;;   )
   )
 
 
@@ -1056,6 +1139,8 @@ is the string result from invoking the command to the running Hercules."
 Given a SESSION sets up the \"system\" panel.  ARGS are passed downstream
 if needed."
 
+  (ignore args)
+  
   (cl-assert (iron-main-session-p session) t
 	     "SESSION %S is not a `iron-main-session'"
 	     session)
@@ -1102,6 +1187,7 @@ if needed."
       (widget-create 'push-button
 		     :notify
 		     (lambda (w cw &rest ignore)
+		       (ignore cw ignore)
 		       (message ">>> Pressed %s" (widget-value w))
 
 		       (let ((dev-list
@@ -1190,6 +1276,8 @@ presentation in the IRON MAIN panel/buffer."
 Given a SESSION sets up the \"help\" panel.  ARGS are passed downstream
 if needed."
 
+  (ignore args)
+  
   (cl-assert (iron-main-session-p session) t
 	     "SESSION %S is not a `iron-main-session'"
 	     session)
@@ -1232,6 +1320,7 @@ if needed."
 
 		  :action
 		  (lambda (w &rest ignore)
+		    (ignore ignore)
 		    (if (string-equal "" (widget-value w))
 			(message "IMHS00I: Getting help for '%s' (%s)."
 				 (widget-value w)
