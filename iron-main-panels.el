@@ -1,16 +1,42 @@
-;;; iron-main-panels.el --- Testing widegts.
+;;; iron-main-panels.el --- IRON MAIN "panels" for mainframe interaction.
 ;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
+;;; iron-main-panels.el
+;;
+;; See the file COPYING license and copyright information.
+;;
+;; Author: Marco Antoniotti <marcoxa [at] gmail.com>
+;;
+;; Created: December 5th, 2020.
+;;
+;; Version: 20210413.1
+;;
+;; Keywords: languages, operating systems.
+
 ;;; Commentary:
+;;
+;; This file contains the "panels" that are used to interact with a
+;; "mainframe" (again, mostly a MVS 3.8j running on Hercules).
+;;
+;; The implementation is an interesteing use (or, one should say,
+;; "abuse") of the Emacs `widget.el' library to give the "look and feel
+;; of using a "mainframe" application in... Emacs (I know: I am a pervert).
+;;
+;; To use, just issue
+;;
+;; M-x iron-main-frame
+;;
+;; The functions in this file have 'iron-main-panels-' as prefix.
 
 ;;; Code:
 
-(require 'widget)
 (require 'cl-lib)
-(require 'iron-main-vars)
 
 (eval-when-compile
+  (require 'widget)
   (require 'wid-edit))
+
+(require 'iron-main-vars)
 
 
 ;;; Panels.
@@ -21,33 +47,32 @@
 ;; The code below uses several examples of the "widget" library found
 ;; in the Emacs Internet.
 
-
 (defvar widget-example-repeat)
 
-(defvar iron-main-current-ds (make-iron-main-ds-rep))
+(defvar iron-main-panels--current-ds (make-iron-main-ds-rep))
 
-(defvar dsname-widget nil)
+(defvar iron-main-panels--dsname-widget nil)
 
-(defvar recfm-widget nil)
-(defvar lrecl-widget nil)
-(defvar blksize-widget nil)
-(defvar dsorg-widget nil)
+(defvar iron-main-panels--recfm-widget nil)
+(defvar iron-main-panels--lrecl-widget nil)
+(defvar iron-main-panels--blksize-widget nil)
+(defvar iron-main-panels--dsorg-widget nil)
 
-(defvar vol-widget nil)
-(defvar unit-widget nil)
+(defvar iron-main-panels--vol-widget nil)
+(defvar iron-main-panels--unit-widget nil)
 
-(defvar space-unit-widget nil)
-(defvar primary-widget nil)
-(defvar secondary-widget nil)
-(defvar dir-widget nil)
+(defvar iron-main-panels--space-unit-widget nil)
+(defvar iron-main-panels--primary-widget nil)
+(defvar iron-main-panels--secondary-widget nil)
+(defvar iron-main-panels--dir-widget nil)
 
 
-(defvar iron-main-panel-mode-map
+(defvar iron-main-panels-mode-keymap
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km widget-keymap)
-    (define-key km (kbd "<f3>") 'iron-main-exit-panel)
-    (define-key km (kbd "q") 'iron-main-exit-panel)
-    (define-key km (kbd "Q") 'iron-main-exit-panel)
+    (define-key km (kbd "<f3>") 'iron-main-panels--exit-panel)
+    (define-key km (kbd "q") 'iron-main-panels--exit-panel)
+    (define-key km (kbd "Q") 'iron-main-panels--exit-panel)
     km
     )
   "The IRON MAIN Panel mode key map.
@@ -56,7 +81,23 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 'PF3'), 'q' and 'Q' exit the current panel.")
 
 
-(defvar-local iron-main-panel-back nil
+(defvar iron-main-panels-editable-field-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-field-keymap)
+
+    ;; Redefine F3; the original is
+    ;; `kmacro-start-macro-or-insert-counter' from `global-map'.
+    
+    (define-key km (kbd "<f3>") 'iron-main-panels--exit-panel)
+    km
+    )
+  "The IRON MAIN Panel mode key map.
+
+The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
+'PF3'), 'q' and 'Q' exit the current panel.")
+
+
+(defvar-local iron-main-panels--back nil
   "Local panel variable set by the 'invoking' panel."
   ;; Pretty crude for the time being.
   ;; This just acts as a stack.  Whever a panel is "closed", the
@@ -65,17 +106,18 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
   )
 
 
-(defvar-local iron-main-in-panel nil
+(defvar-local iron-main-panels--in-panel nil
   "When non NIL, the buffer is an IRON MAIN panel.")
 
 
-(defvar-local iron-main-panel-tag nil
+(defvar-local iron-main-panels--tag nil
   "A tag that identifies the type of IRON MAIN panel.
 
 The value can be either a string or a symbol.")
 
 
-;;;; Panels.
+;; iron-main-panel-mode
+;; The main mode (major) for the panels.
 
 (define-derived-mode iron-main-panel-mode nil "//IRON-MAIN"
   "IRON MAIN Panel Mode.
@@ -87,14 +129,20 @@ You an use the function key `F3' (i.e., `PF3') or the [Qq] keys to
 exit a panel.  Exiting the top panel will exit the IRON MAIN
 interface."
 
-  (setq-local iron-main-in-panel t
-	      iron-main-panel-back nil)
+  (setq-local iron-main-panels--in-panel t
+	      iron-main-panels--back nil)
 
-  (use-local-map iron-main-panel-mode-map)
+  (message ">>> Using local map...")
+  (use-local-map iron-main-panels-mode-keymap)
   )
 
 
-(defun iron-main--panel-title (&optional title)
+;; Panels.
+;; The actual panels available.
+;; The "fields" (or "widgets") of each panel have (function) names
+;; that end in "-field" or "-widget".
+
+(defun iron-main-panels--title-field (&optional title)
   "Create the the IRON MAIN panel title using argument TITLE."
   
   (unless title
@@ -114,7 +162,7 @@ interface."
 
 ;; Unused
 
-(defun iron-main--help-field ()
+(defun iron-main-panels--help-field ()
   "Create the \"help\" field at the bottom of the window."
   ;; Call last before `widget-setup'.
 
@@ -145,13 +193,15 @@ interface."
   )
 
 
-(defun iron-main-dsname-item ()
+(defun iron-main-panels--dsname-item-field ()
   "Create the `dsname' editable-field widget in the IRON MAIN panel."
-  (setq dsname-widget
+  (setq iron-main-panels--dsname-widget
 	(widget-create 'editable-field
                        :size 46	   ; A name is at most 44 plus quotes.
                        :format "Data set name: %v " ; Text after the field!
-		       (iron-main-ds-rep-name iron-main-current-ds)
+		       (iron-main-ds-rep-name iron-main-panels--current-ds)
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       )))
 
 
@@ -159,7 +209,62 @@ interface."
   "The default data set organization (DSORG).")
 
 
-(defun iron-main-dataset-allocation-panel ()
+(defvar-local iron-main-panels--hercules-dsfs-cmds-links ()
+  "List of link widgets created for DSFS panel commands.")
+
+
+(cl-defun iron-main-panels--hercules-dsfs-utilities (session &rest args)
+  "Create the IRON MAIN datasets and file system utilities.
+
+The panel presents the options regarding the handling of datasets
+(files) on the connected, possibly hosted, operating system and the
+file system(s) that Emacs has direct access to; most notably, the
+\"host\" file system, say, Linux, Mac OS X or Windows."
+
+  (interactive)
+
+  (cl-assert (iron-main-session-p session) t
+	     "SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN dataset and file system handling.*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-panel-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-panels--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session)
+	      iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-panels--tag "Hercules datasets")
+  
+  (iron-main-panels--title-field
+   "Dataset and file system handling panel")
+
+  (widget-insert "\n")
+
+  (make-local-variable 'iron-main-panels--hercules-dsfs-cmds-links)
+
+  (setq-local iron-main-panels--hercules-dsfs-cmds-links
+	      (iron-main-panels--insert-command-widgets
+	       iron-main-panels--hercules-dsfs-commands))
+
+  (message "IMHS00I: Hercules datasets and file system utilities.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
+  )
+
+
+(defun iron-main-panels--dataset-allocation ()
   "Create the IRON MAIN dataset allocation panel."
   (interactive)
   (switch-to-buffer "*IRON MAIN dataset allocation*")
@@ -168,61 +273,71 @@ interface."
   (let ((inhibit-read-only t))
     (erase-buffer))
 
-  (iron-main--panel-title "Dataset panel")
+  (iron-main-panels--title-field "Dataset allocation panel")
   
-  (iron-main-dsname-item)
+  (iron-main-panels--dsname-item-field)
 			 
   (widget-insert "\n\n")
 
-  (setf recfm-widget
+  (setf iron-main-panels--recfm-widget
 	(widget-create 'editable-field
 		       :format "Record format (RECFM):         %v"
 		       :value (iron-main-ds-rep-recfm
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 3
 		       :notify (lambda (w &rest ignore)
 				 (message "RECF: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-recfm
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+		       :keymap
+		       iron-main-panels-editable-field-keymap
+
 		       ))
   (widget-insert "\n")
 
-  (setf lrecl-widget
+  (setf iron-main-panels--lrecl-widget
 	(widget-create 'integer
 		       :format "Logical record length (LRECL): %v"
 		       :value (iron-main-ds-rep-lrecl
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 4
+		       
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (message "LRECL: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-lrecl
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       ))
   (widget-insert "\n")
 
-  (setf blksize-widget
+  (setf iron-main-panels--blksize-widget
 	(widget-create 'integer
 		       :format "Block size (BLKSIZE):          %v"
 		       :value (iron-main-ds-rep-blksize
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 6
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (message "BLKSIZE: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-blksize
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       ))
   (widget-insert "\n\n")
 
   (widget-insert "Dataset organization (DSORG): \n")
-  (setf dsorg-widget
+  (setf iron-main-panels--dsorg-widget
 	(widget-create 'radio-button-choice
 		       :tag "Dataset organization (DSORG)"
 		       :doc "Dataset organization (DSORG)"
@@ -234,7 +349,7 @@ interface."
 				 (message "Dataset organization: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-dsorg
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
 		       '(item :tag "Partitioned Data Set (PO)"
 			      :value "PO")
@@ -255,7 +370,7 @@ interface."
   ;; 				 (message "Dataset organization: <%s>."
   ;; 					  (widget-value w))
   ;; 				 (setf (iron-main-ds-rep-dsorg
-  ;; 					iron-main-current-ds)
+  ;; 					iron-main-panels--current-ds)
   ;; 				       (widget-value w)))
   ;; 		       '(item :tag "Partitioned Data Set (PO)"
   ;; 			      :value "PO")
@@ -268,7 +383,7 @@ interface."
   (widget-insert "\n\n")
 
   (widget-insert "Space allocation:\n")
-  (setf space-unit-widget
+  (setf iron-main-panels--space-unit-widget
 	(widget-create 'radio-button-choice
 		       :tag "Dataset space unit (SPACE)"
 		       :value "TRK"
@@ -279,7 +394,7 @@ interface."
 				 (message "Dataset space unit: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-space-unit
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
 		       '(item "TRK")
 		       '(item "CYL")
@@ -291,61 +406,69 @@ interface."
   ;; 	(widget-create 'string
   ;; 		       :format "Space unit: %v"
   ;; 		       :value (iron-main-ds-rep-space-unit
-  ;; 			       iron-main-current-ds)
+  ;; 			       iron-main-panels--current-ds)
   ;; 		       :size 4
   ;; 		       :value-regexp "\\(CYL\\|TRK\\)"
   ;; 		       :notify (lambda (w &rest ignore)
   ;; 				 (message "Space unit: <%s>."
   ;; 					  (widget-value w))
   ;; 				 (setf (iron-main-ds-rep-space-unit
-  ;; 					iron-main-current-ds)
+  ;; 					iron-main-panels--current-ds)
   ;; 				       (widget-value w)))
   ;;                   ))
   
   (widget-insert "\n")
-  (setf primary-widget
+  (setf iron-main-panels--primary-widget
 	(widget-create 'integer
 		       :format "Primary: %v"
 		       :value (iron-main-ds-rep-lrecl
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 8
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (message "Primary: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-primary
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       ))
   (widget-insert "    ")
-  (setf secondary-widget
+  (setf iron-main-panels--secondary-widget
 	(widget-create 'integer
 		       :format "Secondary: %v"
 		       :value (iron-main-ds-rep-secondary
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 8
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (message "Secondary: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-secondary
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       ))
   (widget-insert "    ")
-  (setf dir-widget
+  (setf iron-main-panels--dir-widget
 	(widget-create 'integer
 		       :format "Directory blocks: %v"
 		       :value (iron-main-ds-rep-directory
-			       iron-main-current-ds)
+			       iron-main-panels--current-ds)
 		       :size 4
 		       :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (message "Directory blocks: <%s>."
 					  (widget-value w))
 				 (setf (iron-main-ds-rep-directory
-					iron-main-current-ds)
+					iron-main-panels--current-ds)
 				       (widget-value w)))
+
+		       :keymap
+		       iron-main-panels-editable-field-keymap
 		       ))
 
   ;; (widget-insert "\n\n\n")
@@ -357,14 +480,14 @@ interface."
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
 			   (setf (iron-main-ds-rep-name
-				  iron-main-current-ds)
-				 (widget-value dsname-widget)
+				  iron-main-panels--current-ds)
+				 (widget-value iron-main-panels--dsname-widget)
 				 (iron-main-ds-rep-dsorg
-				  iron-main-current-ds)
-				 (widget-value dsorg-widget))
+				  iron-main-panels--current-ds)
+				 (widget-value iron-main-panels--dsorg-widget))
 			   (message "DD: <%s>."
 				    (iron-main-ds-to-string
-				     iron-main-current-ds)
+				     iron-main-panels--current-ds)
 				    ))
                  "Allocate")
   (widget-insert "    ")
@@ -372,7 +495,7 @@ interface."
                  :notify (lambda (&rest ignore)
 			   (message "JCL buffer for '%s': ...."
 				    (iron-main-ds-rep-name
-				     iron-main-current-ds)
+				     iron-main-panels--current-ds)
 				    ))
                  "View job buffer")
   (widget-insert "    ")
@@ -380,9 +503,9 @@ interface."
                  :notify (lambda (&rest ignore)
 			   (message "Data set name: %s."
 				    (iron-main-ds-rep-name
-				     iron-main-current-ds)
+				     iron-main-panels--current-ds)
 				    )
-			   (iron-main-dataset-save-panel)
+			   (iron-main-panels--dataset-save)
 			   )
                  "Allocate and Save")
   (widget-insert "    ")
@@ -391,7 +514,7 @@ interface."
 		 (lambda (&rest ignore)
 		   (message "Cancelled dataset '%s' allocation in the mainframe."
 			    (iron-main-ds-rep-name
-			     iron-main-current-ds)
+			     iron-main-panels--current-ds)
 			    )
 		   )
                  "Cancel")
@@ -402,9 +525,9 @@ interface."
   )
 
 
-(defvar filename-widget "")
+(defvar iron-main-panels--filename-widget "")
 
-(defun iron-main-dataset-save-panel ()
+(defun iron-main-panels--dataset-save ()
   "Create the IRON MAIN dataset save panel."
   (interactive)
   (switch-to-buffer "*IRON MAIN dataset save*")
@@ -412,17 +535,17 @@ interface."
   (make-local-variable 'panel-iron-main-repeat)
   (let ((inhibit-read-only t))
     (erase-buffer))
-
-  (iron-main--panel-title "Dataset Panel")
   
-  (iron-main-dsname-item)
-			 
+  (iron-main-panels--title-field "Dataset Panel")
+  
+  (iron-main-panels--dsname-item-field)
+  
   (widget-insert "\n\n")
-
-  (setq filename-widget
+  
+  (setq iron-main-panels--filename-widget
 	(widget-create 'file
 		       :format "File: %v\n"
-		       :value (iron-main-ds-rep-name iron-main-current-ds)
+		       :value (iron-main-ds-rep-name iron-main-panels--current-ds)
 		       :size (- 72 (length "File: "))))
 
   (widget-insert (make-string 72 ?_))
@@ -432,7 +555,7 @@ interface."
                  :notify (lambda (&rest ignore)
 			   (message "DD: <%s>."
 				    (iron-main-ds-to-string
-				     iron-main-current-ds)
+				     iron-main-panels--current-ds)
 				    ))
                  "Save to mainframe")
   (widget-insert "    ")
@@ -440,8 +563,9 @@ interface."
                  :notify (lambda (&rest ignore)
 			   (message "JCL buffer for '%s' and '%s': ...."
 				    (iron-main-ds-rep-name
-				     iron-main-current-ds)
-				    (widget-value filename-widget)
+				     iron-main-panels--current-ds)
+				    (widget-value
+				     iron-main-panels--filename-widget)
 				    ))
                  "View job buffer")
   (widget-insert "    ")
@@ -449,7 +573,7 @@ interface."
                  :notify (lambda (&rest ignore)
 			   (message "Saving dataset '%s' to mainframe cancelled."
 				    (iron-main-ds-rep-name
-				     iron-main-current-ds)
+				     iron-main-panels--current-ds)
 				    )
 			   )
                  "Cancel")
@@ -464,19 +588,19 @@ interface."
   "The PID of the Hercules process.  NIL if it is not running or reachable.")
 
 
-(defvar-local iron-main-panel-session nil
+(defvar-local iron-main-panels--session nil
   "The session a panel is attached to.")
 
 
-(defun iron-main-panel-get-session (panel)
+(defun iron-main-panels--get-session (panel)
   "Get the IRON MAIN session attached to PANEL.
 
 PANEL must be a buffer or a buffer name."
   (with-current-buffer panel
-    iron-main-panel-session))
+    iron-main-panels--session))
 
 
-(defun iron-main-widget-tag (w)
+(defun iron-main-panels--widget-tag (w)
   "Get the :tag of widget W.
 
 Notes:
@@ -486,7 +610,7 @@ This function is necessary because it is inexplicably absent from the
   (plist-get (cdr w) :tag))
 
 
-(defun iron-main-widget-notify (w)
+(defun iron-main-panels--widget-notify (w)
   "Get the :notify function of widget W.
 
 Notes:
@@ -496,10 +620,33 @@ This function is necessary because it is inexplicably absent from the
   (plist-get (cdr w) :notify))
 
 
+(cl-defun iron-main-frame (&optional
+			   (machine iron-main-machine)
+			   (os-flavor iron-main-os-flavor))
+  "Create the 'top' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
+
+Notes:
+
+This function is an alias for `iron-main-frame-panel'.
+
+See Also:
+
+IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
+  
+  (interactive)
+  (iron-main-frame-panel machine os-flavor))
+
+
 (cl-defun iron-main-frame-panel (&optional
 				 (machine iron-main-machine)
 				 (os-flavor iron-main-os-flavor)
-				 &aux (from-buffer (current-buffer)))
+				 &aux
+				 (from-buffer (current-buffer))
+				 (instance-banner "")
+				 )
   "Create the 'top' IRON MAIN panel.
 
 The optional MACHINE and OS-FLAVOR arguments default to the values of
@@ -517,11 +664,13 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   ;; (make-local-variable 'panel-iron-main-repeat)
   (let ((inhibit-read-only t))
     (erase-buffer))
+
   (iron-main-panel-mode)
+  
   (setq-local iron-main-machine machine
 	      iron-main-os-flavor os-flavor
-	      iron-main-panel-back from-buffer
-	      iron-main-panel-tag "Top")
+	      iron-main-panels--back from-buffer
+	      iron-main-panels--tag "Top")
   
   (when (iron-main-running-machine "Hercules")
     ;; Trying to get the PID.
@@ -533,13 +682,13 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 	   (iron-main-session-start 'iron-main-hercules-session))
 	  )
       (setq-local iron-main-hercules-pid pid
-		  iron-main-panel-session session)
+		  iron-main-panels--session session)
 
       (if pid
 	  (setf (iron-main-hs-pid session)
 		pid
 		
-		iron-main-instance-banner
+		instance-banner
 		(format "%s running %s on %s:%s (%s) from %s"
 			iron-main-machine
 			iron-main-os-flavor
@@ -547,7 +696,7 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 			iron-main-hercules-http-port
 			pid
 			(system-name)))
-	(setf iron-main-instance-banner
+	(setf instance-banner
 	      (format "%s running %s not available from %s"
 		      iron-main-machine
 		      iron-main-os-flavor
@@ -596,14 +745,14 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   ;; Not running Hercules.
   (when (not (iron-main-running-machine "Hercules"))
     (message "IMMP01I: Hercules not running.")
-    (setf iron-main-instance-banner
+    (setf instance-banner
 	  (format "%s running %s not available"
 		  iron-main-machine
 		  iron-main-os-flavor))
     )
   
-  (iron-main--panel-title)
-  (widget-insert iron-main-instance-banner)
+  (iron-main-panels--title-field)
+  (widget-insert instance-banner)
   (widget-insert "\n")
   
   ;; (widget-insert "OS Hercules dir:      %s\n"
@@ -612,8 +761,9 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   ;; 		 iron-main-hercules-os-dir)
 
   (when (iron-main-running-machine "Hercules")
-    (iron-main--hercules-top-subpanel iron-main-hercules-os-dir
-				      iron-main-hercules-dasd-dir))
+    (iron-main-panels--hercules-top-subpanel
+     iron-main-hercules-os-dir
+     iron-main-hercules-dasd-dir))
 
 
   ;; Let's start!
@@ -636,31 +786,76 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 ;; Where CMD is a string, FUNCTION a "panel invocation" function and
 ;; KEYS a list of key-value pairs to be used for `widget-create'.
 
-(defvar iron-main--hercules-top-commands
-  `(("System" iron-main--hercules-system
+(defvar iron-main-panels--hercules-top-commands
+  `(("System" iron-main-panels--hercules-system
      :header "Inspect Hercules system/machine")
-    ("Datasets" iron-main--hercules-os-fds-utilities
+    ("Datasets" iron-main-panels--hercules-dsfs-utilities
      :header "Handle files and datasets across systems")
-    ("Help" iron-main--hercules-help
+    ("Help" iron-main-panels--hercules-help
      :header "Hercules help")
-    ("Exit"   iron-main-exit-panel
+    ("Exit"   iron-main-panels--exit-panel
      :header "Exit the IRON MAIN current panel or top-level"
      :notify ,(lambda (w &rest args)
-		(iron-main-exit-panel)))
+		(iron-main-panels--exit-panel)))
     )
-  "A 'commands alist' of commands/widget specifications."
+  "A 'commands alist' for the IRON MAIN top panel."
   )
 
 
-(defun iron-main-find-command (cmd commands-alist)
+(defvar iron-main-panels--hercules-dsfs-commands
+  `(
+    ("Exit"   iron-main-panels--exit-panel
+     :header "Exit the IRON MAIN current panel or top-level"
+     :notify ,(lambda (w &rest args)
+		(iron-main-panels--exit-panel)))
+    )
+  "A 'commands alist' for the IRON MAIN dtaset and filesystem  panel."
+  )
+
+
+(defun iron-main-panels--find-command (cmd commands-alist)
   (assoc cmd commands-alist 'string=))
+
+
+(defun iron-main-panels--insert-command-widgets (cmd-alist)
+  (cl-loop for option in cmd-alist
+	   for opt-i from 1
+	   for header = (plist-get option :header)
+	   for notify = (plist-get option :notify)
+	   do
+	   (widget-insert (format "%3d. " opt-i))
+	   collect
+	   (widget-create 'link
+			  :format "%[%t%]\t: %v"
+			  :tag (cl-first option)
+			  :value header
+			  :button-prefix ""
+			  :button-suffix ""
+			  :notify
+			  (if notify
+			      notify
+			    (lambda (w &rest args)
+			      (let ((panel-function
+				     (cl-second
+				      (iron-main-panels--find-command
+				       (iron-main-panels--widget-tag w)
+				       cmd-alist)))
+				    )
+				(iron-main-panels--invoke-panel
+				 (current-buffer)
+				 panel-function)
+				))))
+	   into cmd-links
+	   do
+	   (widget-insert "\n")
+	   ))
 
 
 (defvar-local iron-main-hercules-top-cmds-links ()
   "List of link widgets created for top panel commands.")
 
 
-(defun iron-main--hercules-top-subpanel (os-dir dasd-dir)
+(defun iron-main-panels--hercules-top-subpanel (os-dir dasd-dir)
   "Internal function setting up the Hercules part of the top panel.
 
 The arguments OS-DIR and DASD-DIR are referring to the directories
@@ -692,7 +887,7 @@ where the relevant bits and pieces used by the emulator can be found."
 		 (lambda (cmd)
 		   (<= 1
 		       (widget-value cmd)
-		       (length iron-main--hercules-top-commands)))
+		       (length iron-main-panels--hercules-top-commands)))
 		 
 		 :action
 		 (lambda (cmd &optional event)
@@ -702,7 +897,7 @@ where the relevant bits and pieces used by the emulator can be found."
 			   (nth (1- (widget-value cmd))
 				iron-main-hercules-top-cmds-links))
 			  (cmd-notify
-			   (iron-main-widget-notify cmd-widget))
+			   (iron-main-panels--widget-notify cmd-widget))
 			  )
 		     ;; (message ">>> calling %s on %s"
 		     ;; 	      cmd-notify
@@ -710,13 +905,15 @@ where the relevant bits and pieces used by the emulator can be found."
 		     (when cmd-notify
 		       (apply cmd-notify cmd-widget ()))
 		     ))
+		 :keymap
+		 iron-main-panels-editable-field-keymap
 		 )
 		       
   (widget-insert "\n\n")
 
   (make-local-variable 'iron-main-hercules-top-cmds-links)
   
-  (cl-loop for option in iron-main--hercules-top-commands
+  (cl-loop for option in iron-main-panels--hercules-top-commands
 	   for opt-i from 1
 	   for header = (plist-get option :header)
 	   for notify = (plist-get option :notify)
@@ -735,11 +932,11 @@ where the relevant bits and pieces used by the emulator can be found."
 			    (lambda (w &rest args)
 			      (let ((panel-function
 				     (cl-second
-				      (iron-main-find-command
-				       (iron-main-widget-tag w)
-				       iron-main--hercules-top-commands)))
+				      (iron-main-panels--find-command
+				       (iron-main-panels--widget-tag w)
+				       iron-main-panels--hercules-top-commands)))
 				    )
-				(iron-main-invoke-panel
+				(iron-main-panels--invoke-panel
 				 (current-buffer)
 				 panel-function)
 				))))
@@ -752,10 +949,11 @@ where the relevant bits and pieces used by the emulator can be found."
     )
   )
 
-(defvar-local iron-main--hs-devinfo-ins-pt nil)
+
+(defvar-local iron-main-panels--hs-devinfo-ins-pt nil)
 
 
-(defun iron-main--hercules-clean-devlist (devtype devlist-string)
+(defun iron-main-panels--hercules-clean-devlist (devtype devlist-string)
    "Remove extra noise that is generated for a teminal output and format.
 
 DEVTYPE is one of the \"devlist\" possible arguments; DEVLIST-STRING
@@ -804,7 +1002,7 @@ is the string result from invoking the command to the running Hercules."
     (cond ((string-equal devtype "DASD")
 	   (message "IMHSP2I: formatting DASD list.")
 	   (setq result
-		 (iron-main--format-dasd-list result))
+		 (iron-main-panels--format-dasd-list result))
 	   )
 	  (t
 	   ;; Noting fttb
@@ -819,7 +1017,7 @@ is the string result from invoking the command to the running Hercules."
     ))
 
 
-(defun iron-main--format-dasd-list (dasdlist)
+(defun iron-main-panels--format-dasd-list (dasdlist)
   "Format the string DASDLIST in columns."
   ;; Very simple minded FTTB.
   ;;
@@ -852,7 +1050,7 @@ is the string result from invoking the command to the running Hercules."
     ))
 
 
-(cl-defun iron-main--hercules-system (session &rest args)
+(cl-defun iron-main-panels--hercules-system (session &rest args)
   "Hercules system inspection panel.
 
 Given a SESSION sets up the \"system\" panel.  ARGS are passed downstream
@@ -873,21 +1071,21 @@ if needed."
 
   ;; Now that we have the session, some of these are repetitions.
 
-  (setq-local iron-main-panel-session session)
+  (setq-local iron-main-panels--session session)
   
   (setq-local iron-main-machine
 	      (iron-main-session-machine session)
 	      iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
-  (setq-local iron-main-panel-tag "Hercules system")
+  (setq-local iron-main-panels--tag "Hercules system")
   
-  (iron-main--panel-title "Hercules system")
+  (iron-main-panels--title-field "Hercules system")
 
   ;; Let's start!
 
   ;; (when (iron-main-running-machine "Hercules")
-  ;;   (iron-main--hercules-top-subpanel iron-main-hercules-os-dir
+  ;;   (iron-main-panels--hercules-top-subpanel iron-main-hercules-os-dir
   ;; 				      iron-main-hercules-dasd-dir))
 
   ;; Devices retrievable from the Hercules command 'devlist'.
@@ -912,20 +1110,21 @@ if needed."
 			     (dev-list-clean "")
 			     )
 			 (when dev-list
-			   (when iron-main--hs-devinfo-ins-pt
+			   (when iron-main-panels--hs-devinfo-ins-pt
 			     ;; (message ">>> Clean %s devlist." (widget-value w))
 			     (setq dev-list-clean
-				   (iron-main--hercules-clean-devlist
+				   (iron-main-panels--hercules-clean-devlist
 				    (widget-value w)
 				    dev-list))
 			     ;; (message ">>> Cleaned helpstring.")
-			     (goto-char iron-main--hs-devinfo-ins-pt)
+			     (goto-char iron-main-panels--hs-devinfo-ins-pt)
 			     (save-excursion
 			       (let ((inhibit-read-only t)
 				     (inhibit-modification-hooks t)
 				     )
-				 (delete-region iron-main--hs-devinfo-ins-pt
-			    			(point-max))))
+				 (delete-region
+				  iron-main-panels--hs-devinfo-ins-pt
+			    	  (point-max))))
 					 
 			     (save-excursion
 			       ;; Clean up "HHC0*I" messages before inserting.
@@ -936,7 +1135,7 @@ if needed."
       (widget-insert "  "))
 
     (widget-insert "\n\n")
-    (setq-local iron-main--hs-devinfo-ins-pt (point))
+    (setq-local iron-main-panels--hs-devinfo-ins-pt (point))
     )
   
   (message "IMHS00I: Hercules system.")
@@ -945,10 +1144,10 @@ if needed."
   )
 
 
-(defvar-local help-ins-pt nil)
-(defvar-local help-cmd-widget nil)
+(defvar-local iron-main-panels--help-ins-pt nil)
+(defvar-local iron-main-panels--help-cmd-widget nil)
 
-(defun iron-main--hercules-clean-help (helpstring)
+(defun iron-main-panels--hercules-clean-help (helpstring)
   "Remove extra noise that is generated for a teminal output.
 
 The Hercules \"help\" command formats its output assuming a teminal
@@ -985,7 +1184,7 @@ presentation in the IRON MAIN panel/buffer."
   ))
 
 
-(cl-defun iron-main--hercules-help (session &rest args)
+(cl-defun iron-main-panels--hercules-help (session &rest args)
   "Hercules help panel.
 
 Given a SESSION sets up the \"help\" panel.  ARGS are passed downstream
@@ -1001,39 +1200,44 @@ if needed."
 
   (let ((inhibit-read-only t))
     (erase-buffer))
+  
   (iron-main-panel-mode)
 
   ;; Now that we have the session, some of these are repetitions.
 
-  (setq-local iron-main-panel-session session)
+  (setq-local iron-main-panels--session session)
   
   (setq-local iron-main-machine
 	      (iron-main-session-machine session)
 	      iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
-  (setq-local iron-main-panel-tag "Hercules help")
+  (setq-local iron-main-panels--tag "Hercules help")
   
-  (iron-main--panel-title "Hercules help")
+  (iron-main-panels--title-field "Hercules help")
 
   ;; Let's start!
 
-  (setq-local help-ins-pt (point))
+  (setq-local iron-main-panels--help-ins-pt (point))
 
   ;; (message ">>> Point %s" help-ins-pt)
   (setq-local
-   help-cmd-widget
+   iron-main-panels--help-cmd-widget
    (widget-create 'editable-field
 		  :size 10
 		  :format "Hercules command (empty for a list): %v"
+
+		  :keymap
+		  iron-main-panels-editable-field-keymap
+
 		  :action
 		  (lambda (w &rest ignore)
 		    (if (string-equal "" (widget-value w))
 			(message "IMHS00I: Getting help for '%s' (%s)."
 				 (widget-value w)
-				 help-ins-pt)
+				 iron-main-panels--help-ins-pt)
 		      (message "IMHS00I: Available commands... (%s)"
-			       help-ins-pt)
+			       iron-main-panels--help-ins-pt)
 		      )
 		    (let ((helpstring
 			    (iron-main-hercules-help (widget-value w)))
@@ -1041,20 +1245,21 @@ if needed."
 			  (helpstring-clean "")
 			  )
 		      (when helpstring
-			(when help-ins-pt
+			(when iron-main-panels--help-ins-pt
 			  ;; (message ">>> Clean helpstring.")
 			  (setq helpstring-clean
-				(iron-main--hercules-clean-help
+				(iron-main-panels--hercules-clean-help
 				 helpstring)
 				)
 			  ;; (message ">>> Cleaned helpstring.")
-			  (goto-char help-ins-pt)
+			  (goto-char iron-main-panels--help-ins-pt)
 			  (save-excursion
 			    (let ((inhibit-read-only t)
 				  (inhibit-modification-hooks t)
 				  )
-			      (delete-region help-ins-pt
-			    		     (point-max))))
+			      (delete-region
+			       iron-main-panels--help-ins-pt
+			       (point-max))))
 					 
 			  (save-excursion
 			    ;; Clean up "HHC0*I" messages before inserting.
@@ -1066,7 +1271,7 @@ if needed."
    )
 	
   (widget-insert "\n")
-  (setq help-ins-pt (point))
+  (setq iron-main-panels--help-ins-pt (point))
   
   (message "IMHS00I: Hercules help.")
   (prog1 (widget-setup)
@@ -1076,8 +1281,8 @@ if needed."
 
 ;;; Panel navigation.
 
-(cl-defun iron-main-exit-panel (&optional (panel-to-exit
-					   (current-buffer)))
+(cl-defun iron-main-panels--exit-panel (&optional
+					(panel-to-exit (current-buffer)))
   "Exit the current panel 'popping' the 'stack' of panels.
 
 PANEL-TO-EXIT is the panel to exit, defaulting to the current buffer.
@@ -1089,22 +1294,22 @@ effect.  If the 'back' buffer is not live"
   (message "IMPF01I Exiting %S" panel-to-exit)
   (with-current-buffer panel-to-exit
     (message ">>> in-panel %S, panel-tag %S, back %S, live %S"
-	     iron-main-in-panel
-	     iron-main-panel-tag
-	     iron-main-panel-back
-	     (and (bufferp iron-main-panel-back)
-		  (buffer-live-p iron-main-panel-back)))
-    (when iron-main-in-panel
-      (when (string= iron-main-panel-tag "Top")
+	     iron-main-panels--in-panel
+	     iron-main-panels--tag
+	     iron-main-panels--back
+	     (and (bufferp iron-main-panels--back)
+		  (buffer-live-p iron-main-panels--back)))
+    (when iron-main-panels--in-panel
+      (when (string= iron-main-panels--tag "Top")
 	(message "IMMP02I: Exiting IRON MAIN...")
 	(sleep-for 3)
-	(iron-main-session-delete iron-main-panel-session))
+	(iron-main-session-delete iron-main-panels--session))
 
       ;; Order of `switch-to-buffer' and `kill-buffer' is important.
-      (if (and (bufferp iron-main-panel-back)
-	       (buffer-live-p iron-main-panel-back))
+      (if (and (bufferp iron-main-panels--back)
+	       (buffer-live-p iron-main-panels--back))
 	  (progn
-	    (switch-to-buffer iron-main-panel-back nil t)
+	    (switch-to-buffer iron-main-panels--back nil t)
 	    (kill-buffer panel-to-exit))
 	(progn
 	  ;; iron-main-panel-back not a buffer or not live.
@@ -1113,16 +1318,16 @@ effect.  If the 'back' buffer is not live"
 	))))
 
 
-(defun iron-main-invoke-panel (from panel-start-function &rest args)
+(defun iron-main-panels--invoke-panel (from panel-start-function &rest args)
   "Start a new panel by calling PANEL-START-FUNCTION.
 
 The function PANEL-START-FUNCTION is one of the functions setting
-up a panel; it is called by applying it to the session
-attached to FROM and ARGS.  After calling the
-PANEL-START-FUNCTION, `iron-main-invoke-panel' assumes that Emacs
-has switched to a new panel/buffer and it sets the buffer local
-variable `iron-main-panel-back' variable to FROM (which should be
-a panel/buffer itself.
+up a panel; it is called by applying it to the session attached
+to FROM and ARGS.  After calling the PANEL-START-FUNCTION,
+`iron-main-panels--invoke-panel' assumes that Emacs has switched
+to a new panel/buffer and it sets the buffer local variable
+`iron-main-panel-back' variable to FROM (which should be a
+panel/buffer itself.
 
 The function returns a list containing two items: the current
 buffer (which should be the buffer associated to the panel
@@ -1132,13 +1337,16 @@ If PANEL-FUNCTION is NIL, this is a no-op"
   
   (when panel-start-function
     (apply panel-start-function
-	   (iron-main-panel-get-session from)
+	   (iron-main-panels--get-session from)
 	   args)
-    (setq-local iron-main-panel-back
+
+    (message ">>> Panel invoked; setting back to %s" from)
+    
+    (setq-local iron-main-panels--back
 		from
 
-		iron-main-panel-session
-		(iron-main-panel-get-session from))
+		iron-main-panels--session
+		(iron-main-panels--get-session from))
     (list (current-buffer) from))
   )
 
