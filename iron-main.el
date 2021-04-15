@@ -1,5 +1,5 @@
-;;; iron-main --- Facilities to handle "Iron" (IBM MVS or z/OS).
 ;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; iron-main --- Facilities to handle "Iron" (IBM MVS or z/OS).
 
 ;;; iron-main.el
 ;;
