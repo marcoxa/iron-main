@@ -30,8 +30,6 @@
 
 ;;; Code:
 
-(setq lexical-binding t)		; Just to be extra sure.
-
 (require 'cl-lib)
 
 (eval-when-compile
@@ -124,6 +122,31 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 The value can be either a string or a symbol.")
 
 
+(defvar-local iron-main-panels--cmds ()
+  "The panel command alist.
+
+This list contains a \"command alist\" which is a specification for
+link widgets to insert in a panel.  Each IRON MAIN panel (which is
+eventually an Emacsbuffer) can initialize this variable as it wishes.
+
+The format is of a  \"command alist\" is the following:
+
+    (cmd function &rest keys)
+
+Where CMD is a string, FUNCTION a \"panel invocation\" function and
+KEYS a list of key-value pairs to be used for `widget-create'.
+
+See Also:
+
+`iron-main-panels--hercules-top-commands',
+`iron-main-panels--hercules-dsfs-commands'
+")
+
+
+(defvar-local iron-main-panels--cmds-links ()
+  "List of \"link\" widgets for the commands available in the panel.")
+
+
 ;;; Commands alists.
 ;;
 ;; Commands alists are lists of "specifications" for link widgets to
@@ -168,12 +191,12 @@ The value can be either a string or a symbol.")
   (assoc cmd commands-alist 'string=))
 
 
-(defun iron-main-panels--command-field (cmd-alist cmds-links)
+(defun iron-main-panels--command-field ()
   (widget-insert "Command")
   (widget-create 'integer :size 3 :tag "" :value ""
 		 :validate
 		 (lambda (cmd)
-		   (<= 1 (widget-value cmd) (length cmd-alist)))
+		   (<= 1 (widget-value cmd) (length iron-main-panels--cmds)))
 		 
 		 :action
 		 (lambda (cmd &optional event)
@@ -181,7 +204,8 @@ The value can be either a string or a symbol.")
 		   (message ">>> notified")
 		   ;; (sleep-for 3)
 		   (let* ((cmd-widget
-			   (nth (1- (widget-value cmd)) cmds-links))
+			   (nth (1- (widget-value cmd))
+				iron-main-panels--cmds-links))
 			  (cmd-notify
 			   (iron-main-panels--widget-notify cmd-widget))
 			  )
@@ -369,7 +393,8 @@ file system(s) that Emacs has direct access to; most notably, the
 	      iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
-  (setq-local iron-main-panels--tag "Hercules datasets")
+  (setq-local iron-main-panels--tag "Hercules datasets"
+	      iron-main-panels--cmds iron-main-panels--hercules-dsfs-commands)
   
   (iron-main-panels--title-field
    "Dataset and file system handling panel")
@@ -378,17 +403,11 @@ file system(s) that Emacs has direct access to; most notably, the
 
   ;; Let's start!
 
-  (make-local-variable 'iron-main-panels--hercules-dsfs-cmds-links)
-  ;; NOTE: the above variable should become generalized and panel
-  ;; (i.e., buffer) local.
-
-  (iron-main-panels--command-field
-   iron-main-panels--hercules-dsfs-commands
-   iron-main-panels--hercules-dsfs-cmds-links)
+  (iron-main-panels--command-field)
   
-  (setq-local iron-main-panels--hercules-dsfs-cmds-links
+  (setq-local iron-main-panels--cmds-links
 	      (iron-main-panels--insert-command-widgets
-	       iron-main-panels--hercules-dsfs-commands))
+	       iron-main-panels--cmds))
 
   (message "IMHS00I: Hercules datasets and file system utilities.")
   (prog1 (widget-setup)
@@ -820,11 +839,14 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
     (erase-buffer))
 
   (iron-main-panel-mode)
+
+  ;; Init buffer local variables.
   
   (setq-local iron-main-machine machine
 	      iron-main-os-flavor os-flavor
 	      iron-main-panels--back from-buffer
-	      iron-main-panels--tag "Top")
+	      iron-main-panels--tag "Top"
+	      iron-main-panels--cmds iron-main-panels--hercules-top-commands)
   
   (when (iron-main-running-machine "Hercules")
     ;; Trying to get the PID.
@@ -917,16 +939,17 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   (when (iron-main-running-machine "Hercules")
     (iron-main-panels--hercules-top-subpanel
      iron-main-hercules-os-dir
-     iron-main-hercules-dasd-dir))
+     iron-main-hercules-dasd-dir)
+
+    (iron-main-panels--command-field)
+  
+    (setq-local iron-main-panels--cmds-links
+		(iron-main-panels--insert-command-widgets
+		 iron-main-panels--cmds))
+    )
 
 
   ;; Let's start!
-
-  (make-local-variable 'iron-main-panels--hercules-top-cmds-links)
-
-  (setq-local iron-main-panels--hercules-top-cmds-links
-	      (iron-main-panels--insert-command-widgets
-	       iron-main-panels--hercules-top-commands))
 
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
@@ -963,36 +986,40 @@ where the relevant bits and pieces used by the emulator can be found."
   (widget-insert (make-string 72 175))	; 175 is the "overline"
   (widget-insert "\n")
 
-  (widget-insert "Command")
-  (widget-create 'integer :size 3 :tag "" :value ""
-		 :validate
-		 (lambda (cmd)
-		   (<= 1
-		       (widget-value cmd)
-		       (length iron-main-panels--hercules-top-commands)))
+  ;; (iron-main-panels--command-field)
+  
+  ;; (widget-insert "Command")
+  ;; (widget-create 'integer :size 3 :tag "" :value ""
+  ;; 		 :validate
+  ;; 		 (lambda (cmd)
+  ;; 		   (<= 1 (widget-value cmd) (length iron-main-panels--cmds)))
 		 
-		 :action
-		 (lambda (cmd &optional event)
-		   (ignore event)
-		   (message ">>> notified")
-		   ;; (sleep-for 3)
-		   (let* ((cmd-widget
-			   (nth (1- (widget-value cmd))
-				iron-main-panels--hercules-top-cmds-links))
-			  (cmd-notify
-			   (iron-main-panels--widget-notify cmd-widget))
-			  )
-		     (message ">>> calling %s on %s"
-		      	      cmd-notify
-		     	      cmd-widget)
-		     (when cmd-notify
-		       (apply cmd-notify cmd-widget ()))
-		     ))
-		 :keymap
-		 iron-main-panels-editable-field-keymap
-		 )
+  ;; 		 :action
+  ;; 		 (lambda (cmd &optional event)
+  ;; 		   (ignore event)
+  ;; 		   (message ">>> notified")
+  ;; 		   ;; (sleep-for 3)
+  ;; 		   (let* ((cmd-widget
+  ;; 			   (nth (1- (widget-value cmd))
+  ;; 				iron-main-panels--cmds-links))
+  ;; 			  (cmd-notify
+  ;; 			   (iron-main-panels--widget-notify cmd-widget))
+  ;; 			  )
+  ;; 		     (message ">>> calling %s on %s"
+  ;; 		      	      cmd-notify
+  ;; 		     	      cmd-widget)
+  ;; 		     (when cmd-notify
+  ;; 		       (apply cmd-notify cmd-widget ()))
+  ;; 		     ))
+  ;; 		 :keymap
+  ;; 		 iron-main-panels-editable-field-keymap
+  ;; 		 )
 		       
-  (widget-insert "\n\n")
+  ;; (widget-insert "\n\n")
+
+  ;; (setq-local iron-main-panels--cmds-links
+  ;; 	      (iron-main-panels--insert-command-widgets
+  ;; 	       iron-main-panels--cmds))
 
   ;; (make-local-variable 'iron-main-hercules-top-cmds-links)
   
