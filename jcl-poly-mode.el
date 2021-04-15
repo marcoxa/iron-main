@@ -73,7 +73,7 @@
   (define-innermode jcl-c-innermode
     :mode 'c-mode
     ;; The next should accomodate both JCC and GCC.
-    :head-matcher "^//COMP\\(ILE\))\\.SYSIN +DD +\\*"
+    :head-matcher "^//COMP\\(ILE\\))*\\.SYSIN +DD +\\*"
     :tail-matcher "^\\(/\\*\\|//\\)"
     :head-mode 'host
     :tail-mode 'host)
