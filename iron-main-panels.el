@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20210413.1
+;; Version: 20210415.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -47,24 +47,22 @@
 ;; The code below uses several examples of the "widget" library found
 ;; in the Emacs Internet.
 
-(defvar widget-example-repeat)
+(defvar-local iron-main-panels--current-ds (make-iron-main-ds-rep))
 
-(defvar iron-main-panels--current-ds (make-iron-main-ds-rep))
+(defvar-local iron-main-panels--dsname-widget nil)
 
-(defvar iron-main-panels--dsname-widget nil)
+(defvar-local iron-main-panels--recfm-widget nil)
+(defvar-local iron-main-panels--lrecl-widget nil)
+(defvar-local iron-main-panels--blksize-widget nil)
+(defvar-local iron-main-panels--dsorg-widget nil)
 
-(defvar iron-main-panels--recfm-widget nil)
-(defvar iron-main-panels--lrecl-widget nil)
-(defvar iron-main-panels--blksize-widget nil)
-(defvar iron-main-panels--dsorg-widget nil)
+(defvar-local iron-main-panels--vol-widget nil)
+(defvar-local iron-main-panels--unit-widget nil)
 
-(defvar iron-main-panels--vol-widget nil)
-(defvar iron-main-panels--unit-widget nil)
-
-(defvar iron-main-panels--space-unit-widget nil)
-(defvar iron-main-panels--primary-widget nil)
-(defvar iron-main-panels--secondary-widget nil)
-(defvar iron-main-panels--dir-widget nil)
+(defvar-local iron-main-panels--space-unit-widget nil)
+(defvar-local iron-main-panels--primary-widget nil)
+(defvar-local iron-main-panels--secondary-widget nil)
+(defvar-local iron-main-panels--dir-widget nil)
 
 
 ;;; IRON MAIN panel keymaps.
@@ -160,11 +158,14 @@ See Also:
 
 (defvar iron-main-panels--hercules-top-commands
   `(("System" iron-main-panels--hercules-system
-     :header "Inspect Hercules system/machine")
+     :header "Inspect Hercules system/machine"
+     )
     ("Datasets" iron-main-panels--hercules-dsfs-utilities
-     :header "Handle files and datasets across systems")
+     :header "Handle files and datasets across systems"
+     )
     ("Help" iron-main-panels--hercules-help
-     :header "Hercules help")
+     :header "Hercules help"
+     )
     ("Exit"   iron-main-panels--exit-panel
      :header "Exit the IRON MAIN current panel or top-level"
      :notify ,(lambda (w &rest args)
@@ -176,7 +177,18 @@ See Also:
 
 
 (defvar iron-main-panels--hercules-dsfs-commands
-  `(
+  `(("Allocate" iron-main-panels--dataset-allocation
+     :header "Allocate a dataset on the mainframe"
+     )
+    ("Upload" iron-main-panels--dataset-save
+     :header "Upload a local file on the mainframe"
+     )
+    ("Edit"  iron-main-panels--dataset-edit
+     :header "Edit a dataset member from the mainframe (if connected)"
+     )
+    ("Edit local"  iron-main-panels--dataset-edit-local
+     :header "Edit a local file"
+     )
     ("Exit"   iron-main-panels--exit-panel
      :header "Exit the IRON MAIN current panel or top-level"
      :notify ,(lambda (w &rest args)
@@ -346,9 +358,37 @@ interface."
                        :size 46	   ; A name is at most 44 plus quotes.
                        :format "Data set name: %v " ; Text after the field!
 		       (iron-main-ds-rep-name iron-main-panels--current-ds)
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "DSN: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-name
+				iron-main-panels--current-ds)
+			       (widget-value w)))
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-		       )))
+		       ))
+  (widget-insert "\n")
+  (setf iron-main-panels--vol-widget
+	(widget-create 'editable-field
+		       :format "Volume serial: %v"
+		       :value (iron-main-ds-rep-vol
+			       iron-main-panels--current-ds)
+		       :size 6
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "VOL: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-vol
+				iron-main-panels--current-ds)
+			       (widget-value w)))
+		       :keymap
+		       iron-main-panels-editable-field-keymap
+
+		       ))
+    )
 
 
 (defvar iron-main-ds-allocation-dsorg "PDS"
@@ -415,15 +455,37 @@ file system(s) that Emacs has direct access to; most notably, the
   )
 
 
-(defun iron-main-panels--dataset-allocation ()
+;; Dataset allocation.
+;; -------------------
+
+(defun iron-main-panels--dataset-allocation (session &rest args)
   "Create the IRON MAIN dataset allocation panel."
+  
   (interactive)
+
+  (ignore session args)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
   (switch-to-buffer "*IRON MAIN dataset allocation*")
+
   (kill-all-local-variables)
-  (make-local-variable 'panel-iron-main-repeat)
+
   (let ((inhibit-read-only t))
     (erase-buffer))
 
+  (iron-main-panel-mode)
+
+  ;; Init buffer local variables.
+  
+  (setq-local iron-main-panels--tag "Allocation panel"
+	      iron-main-panels--cmds ())
+
+  
+  ;; Let's start!
+  
   (iron-main-panels--title-field "Dataset allocation panel")
   
   (iron-main-panels--dsname-item-field)
@@ -490,6 +552,25 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ))
   (widget-insert "\n\n")
 
+  (setf iron-main-panels--vol-widget
+	(widget-create 'editable-field
+		       :format "Volume (VOL):                  %v"
+		       :value (iron-main-ds-rep-vol
+			       iron-main-panels--current-ds)
+		       :size 6
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "VOL: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-vol
+					iron-main-panels--current-ds)
+				       (widget-value w)))
+		       :keymap
+		       iron-main-panels-editable-field-keymap
+
+		       ))
+  (widget-insert "\n\n")
+
   (widget-insert "Dataset organization (DSORG): \n")
   (setf iron-main-panels--dsorg-widget
 	(widget-create 'radio-button-choice
@@ -514,27 +595,6 @@ file system(s) that Emacs has direct access to; most notably, the
 			      :value "PS")
 		       ;; Add other ones.
 		       ))
-  ;; (setf dsorg-widget
-  ;; 	(widget-create 'menu-choice
-  ;; 		       :tag "Dataset organization (DSORG)"
-  ;; 		       :value "PO"
-  ;; 		       :void  "PO"
-  ;; 		       :choice "Partitioned Data Set (PDS)"
-  ;; 		       :help-echo "Choose the dataset organization"
-  ;; 		       :notify (lambda (w &rest ignore)
-  ;; 				 (message "Dataset organization: <%s>."
-  ;; 					  (widget-value w))
-  ;; 				 (setf (iron-main-ds-rep-dsorg
-  ;; 					iron-main-panels--current-ds)
-  ;; 				       (widget-value w)))
-  ;; 		       '(item :tag "Partitioned Data Set (PO)"
-  ;; 			      :value "PO")
-  ;; 		       ;; '(item :tag "Partitioned Data Set Extended (PDSE)"
-  ;; 		       ;;        :value "PDSE")
-  ;; 		       '(item :tag "Sequential (PS)"
-  ;; 			      :value "PS")
-  ;; 		       ;; Add other ones.
-  ;; 		       ))
   (widget-insert "\n\n")
 
   (widget-insert "Space allocation:\n")
@@ -557,22 +617,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       '(item "BLK")
 		       ;; Add other ones.
 		       ))
-  
-  ;; (setf space-unit-widget
-  ;; 	(widget-create 'string
-  ;; 		       :format "Space unit: %v"
-  ;; 		       :value (iron-main-ds-rep-space-unit
-  ;; 			       iron-main-panels--current-ds)
-  ;; 		       :size 4
-  ;; 		       :value-regexp "\\(CYL\\|TRK\\)"
-  ;; 		       :notify (lambda (w &rest ignore)
-  ;; 				 (message "Space unit: <%s>."
-  ;; 					  (widget-value w))
-  ;; 				 (setf (iron-main-ds-rep-space-unit
-  ;; 					iron-main-panels--current-ds)
-  ;; 				       (widget-value w)))
-  ;;                   ))
-  
+    
   (widget-insert "\n")
   (setf iron-main-panels--primary-widget
 	(widget-create 'integer
@@ -667,7 +712,7 @@ file system(s) that Emacs has direct access to; most notably, the
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
 				    )
-			   (iron-main-panels--dataset-save)
+			   (iron-main-panels--dataset-save session)
 			   )
                  "Allocate and Save")
   (widget-insert "    ")
@@ -675,7 +720,7 @@ file system(s) that Emacs has direct access to; most notably, the
                  :notify
 		 (lambda (&rest ignore)
 		   (ignore ignore)
-		   (message "Cancelled dataset '%s' allocation in the mainframe."
+		   (message "Cancelled dataset '%s' mainframe allocation."
 			    (iron-main-ds-rep-name
 			     iron-main-panels--current-ds)
 			    )
@@ -683,23 +728,39 @@ file system(s) that Emacs has direct access to; most notably, the
                  "Cancel")
 
   (widget-insert "\n")
-  (use-local-map widget-keymap)
-  (widget-setup)
+
+  (message "IMDS00I: Dataset allocation panel set up.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
   )
 
 
+;; Dataset save panel.
+;; -------------------
+
 (defvar iron-main-panels--filename-widget "")
 
-(defun iron-main-panels--dataset-save ()
+(defun iron-main-panels--dataset-save (session &rest args)
   "Create the IRON MAIN dataset save panel."
+  
   (interactive)
+
+  (ignore args session)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
   (switch-to-buffer "*IRON MAIN dataset save*")
+  
   (kill-all-local-variables)
-  (make-local-variable 'panel-iron-main-repeat)
+  
   (let ((inhibit-read-only t))
     (erase-buffer))
+
+  (iron-main-panel-mode)
   
-  (iron-main-panels--title-field "Dataset Panel")
+  (iron-main-panels--title-field "Dataset member save")
   
   (iron-main-panels--dsname-item-field)
   
@@ -708,45 +769,99 @@ file system(s) that Emacs has direct access to; most notably, the
   (setq iron-main-panels--filename-widget
 	(widget-create 'file
 		       :format "File: %v\n"
-		       :value (iron-main-ds-rep-name iron-main-panels--current-ds)
-		       :size (- 72 (length "File: "))))
+		       :value (iron-main-ds-rep-name
+			       iron-main-panels--current-ds)
+		       :size (- 72 (length "File: "))
+		       :keymap
+		       iron-main-panels-editable-field-keymap))
 
   (widget-insert (make-string 72 ?_))
   (widget-insert "\n")
   
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (message "DD: <%s>."
-				    (iron-main-ds-to-string
-				     iron-main-panels--current-ds)
-				    ))
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "DD: <%s>."
+			    (iron-main-ds-to-string
+			     iron-main-panels--current-ds)
+			    ))		 
                  "Save to mainframe")
   (widget-insert "    ")
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (message "JCL buffer for '%s' and '%s': ...."
-				    (iron-main-ds-rep-name
-				     iron-main-panels--current-ds)
-				    (widget-value
-				     iron-main-panels--filename-widget)
-				    ))
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "JCL buffer for '%s' and '%s': ...."
+			    (iron-main-ds-rep-name
+			     iron-main-panels--current-ds)
+			    (widget-value
+			     iron-main-panels--filename-widget)
+			    ))
                  "View job buffer")
   (widget-insert "    ")
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (message "Saving dataset '%s' to mainframe cancelled."
-				    (iron-main-ds-rep-name
-				     iron-main-panels--current-ds)
-				    )
-			   )
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "Saving dataset '%s' to mainframe cancelled."
+			    (iron-main-ds-rep-name
+			     iron-main-panels--current-ds)
+			    )
+		   )
                  "Cancel")
 
   (widget-insert "\n")
-  (use-local-map widget-keymap)
-  (widget-setup)
+
+  (message "IMDS00I: Dataset upload panel set up.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
+  )
+
+
+;; Dataset edit dataset member panel.
+;; ----------------------------------
+
+(defun iron-main-panels--dataset-edit (session &rest args)
+  "Create the IRON MAIN dataset save panel."
+  
+  (interactive)
+
+  (ignore session args)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
+  (switch-to-buffer "*IRON MAIN dataset edit*")
+  
+  (kill-all-local-variables)
+  
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-panel-mode)
+  
+  (iron-main-panels--title-field "Dataset member edit")
+  
+  (iron-main-panels--dsname-item-field)
+  
+  (widget-insert "\n\n")
+  
+  (setq iron-main-panels--filename-widget
+	(widget-create 'file
+		       :format "File: %v\n"
+		       :value (iron-main-ds-rep-name
+			       iron-main-panels--current-ds)
+		       :size (- 72 (length "File: "))))
+
+  (widget-insert (make-string 72 ?_))
+  (widget-insert "\n")
+  
+
+  (message "IMDS00I: Dataset edit panel set up.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
   )
 
 
@@ -926,16 +1041,13 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 		  iron-main-machine
 		  iron-main-os-flavor))
     )
+
+  ;; Let's start!
   
   (iron-main-panels--title-field)
   (widget-insert instance-banner)
   (widget-insert "\n")
   
-  ;; (widget-insert "OS Hercules dir:      %s\n"
-  ;; 		 iron-main-hercules-os-dir)
-  ;; (widget-insert "OS Hercules DASD dir: %s\n"
-  ;; 		 iron-main-hercules-os-dir)
-
   (when (iron-main-running-machine "Hercules")
     (iron-main-panels--hercules-top-subpanel
      iron-main-hercules-os-dir
@@ -947,9 +1059,6 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 		(iron-main-panels--insert-command-widgets
 		 iron-main-panels--cmds))
     )
-
-
-  ;; Let's start!
 
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
@@ -985,78 +1094,6 @@ where the relevant bits and pieces used by the emulator can be found."
   (widget-insert "\n\n")
   (widget-insert (make-string 72 175))	; 175 is the "overline"
   (widget-insert "\n")
-
-  ;; (iron-main-panels--command-field)
-  
-  ;; (widget-insert "Command")
-  ;; (widget-create 'integer :size 3 :tag "" :value ""
-  ;; 		 :validate
-  ;; 		 (lambda (cmd)
-  ;; 		   (<= 1 (widget-value cmd) (length iron-main-panels--cmds)))
-		 
-  ;; 		 :action
-  ;; 		 (lambda (cmd &optional event)
-  ;; 		   (ignore event)
-  ;; 		   (message ">>> notified")
-  ;; 		   ;; (sleep-for 3)
-  ;; 		   (let* ((cmd-widget
-  ;; 			   (nth (1- (widget-value cmd))
-  ;; 				iron-main-panels--cmds-links))
-  ;; 			  (cmd-notify
-  ;; 			   (iron-main-panels--widget-notify cmd-widget))
-  ;; 			  )
-  ;; 		     (message ">>> calling %s on %s"
-  ;; 		      	      cmd-notify
-  ;; 		     	      cmd-widget)
-  ;; 		     (when cmd-notify
-  ;; 		       (apply cmd-notify cmd-widget ()))
-  ;; 		     ))
-  ;; 		 :keymap
-  ;; 		 iron-main-panels-editable-field-keymap
-  ;; 		 )
-		       
-  ;; (widget-insert "\n\n")
-
-  ;; (setq-local iron-main-panels--cmds-links
-  ;; 	      (iron-main-panels--insert-command-widgets
-  ;; 	       iron-main-panels--cmds))
-
-  ;; (make-local-variable 'iron-main-hercules-top-cmds-links)
-  
-  ;; (cl-loop for option in iron-main-panels--hercules-top-commands
-  ;; 	   for opt-i from 1
-  ;; 	   for header = (plist-get option :header)
-  ;; 	   for notify = (plist-get option :notify)
-  ;; 	   do
-  ;; 	   (widget-insert (format "%3d. " opt-i))
-  ;; 	   collect
-  ;; 	   (widget-create 'link
-  ;; 			  :format "%[%t%]\t: %v"
-  ;; 			  :tag (cl-first option)
-  ;; 			  :value header
-  ;; 			  :button-prefix ""
-  ;; 			  :button-suffix ""
-  ;; 			  :notify
-  ;; 			  (if notify
-  ;; 			      notify
-  ;; 			    (lambda (w &rest args)
-  ;; 			      (let ((panel-function
-  ;; 				     (cl-second
-  ;; 				      (iron-main-panels--find-command
-  ;; 				       (iron-main-panels--widget-tag w)
-  ;; 				       iron-main-panels--hercules-top-commands)))
-  ;; 				    )
-  ;; 				(iron-main-panels--invoke-panel
-  ;; 				 (current-buffer)
-  ;; 				 panel-function)
-  ;; 				))))
-  ;; 	   into cmd-links
-  ;; 	   do
-  ;; 	   (widget-insert "\n")
-  ;; 	   finally
-  ;; 	   (setq-local iron-main-hercules-top-cmds-links
-  ;; 		       cmd-links)
-  ;;   )
   )
 
 
@@ -1196,10 +1233,6 @@ if needed."
 
   ;; Let's start!
 
-  ;; (when (iron-main-running-machine "Hercules")
-  ;;   (iron-main-panels--hercules-top-subpanel iron-main-hercules-os-dir
-  ;; 				      iron-main-hercules-dasd-dir))
-
   ;; Devices retrievable from the Hercules command 'devlist'.
   ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
 
@@ -1256,6 +1289,9 @@ if needed."
     (widget-forward 1))
   )
 
+
+;; Help panel.
+;; -----------
 
 (defvar-local iron-main-panels--help-ins-pt nil)
 (defvar-local iron-main-panels--help-cmd-widget nil)
@@ -1396,6 +1432,7 @@ if needed."
 
 
 ;;; Panel navigation.
+;;; =================
 
 (cl-defun iron-main-panels--exit-panel (&optional
 					(panel-to-exit (current-buffer)))
