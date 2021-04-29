@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20210405.1
+;; Version: 20210421.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -49,6 +49,9 @@
 ;; The order of the require and load calls is relevant.
 
 (require 'ruler-mode)
+(require 'desktop)
+(require 'widget)
+(require 'wid-edit)
 
 
 ;; Mainframe interaction files.
