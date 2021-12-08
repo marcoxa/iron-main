@@ -311,8 +311,10 @@ selects them in case of 'continuation' cards that do not have the
   (easy-menu-define jcl-mainframe-os-menu jcl-mode-map
     "JCL commands"
     '("JCL OS"
-      ["Submit" jcl-submit]
-      ["Submit JCL File" jcl-submit-file])
+      ["Submit Job" jcl-submit
+       :help "Submit the job contained in the current buffer." ]
+      ["Submit a JCL File" jcl-submit-file
+       :help "Submit a JCL file to a card reader; a port will be asked for."])
     )
 
   (setq-local imenu-generic-expression
