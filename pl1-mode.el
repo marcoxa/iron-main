@@ -62,7 +62,9 @@ This mode is part of the IRON MAIN package."
 
 (defvar pl1-labels
   ;; "^ *\\([[:alnum:]]* +\\)*\\([[:alnum:]]+\\):"
-  "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\):"
+  ;; "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\):"
+  ;; As above, but with optional spaces before colon.
+  "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\) *:"
   )
 
 
@@ -202,7 +204,7 @@ The set of PL/I 'statements'."
     "OFFSET"
     "ORDINAL" "ORD"
     "PICTURE" "PIC"
-    "POINTER"
+    "POINTER" "PTR"
     "PRECISION" "PREC"
     "REAL"
     "RETURNS"
@@ -324,6 +326,32 @@ The set of names that can be used to qualify a PL/I piece of data.")
   "PL/I 'operators'.  A really minimal set.")
 
 
+(defvar pl1-directives                  ; Not really that nice, but it
+                                        ; is a first approximation.
+  '("%"
+    "%ACTIVATE" "% ACTIVATE"
+    "%DEACTIVATE" "% DEACTIVATE"
+    "%DECLARE" "% DECLARE"
+    "%DO" "% DO"
+    "%END" "% END"
+    "%GO TO" "% GO TO"
+    "%IF" "% IF"
+    "%THEN" "% THEN"
+    "%ELSE" "% ELSE"
+    "%INCLUDE" "% INCLUDE"
+    "%INSCAN" "% INSCAN"
+    "%ITERATE" "% ITERATE"
+    "%LEAVE" "% LEAVE"
+    "%NOTE" "% NOTE"
+    "%PROCEDURE" "% PROCEDURE"
+    "%PROCESS" "% PROCESS" "*PROCESS"   ; Not really preprocessor.
+    "%REPLACE" "% REPLACE"
+    "%SELECT" "% SELECT"
+    "%XINCLUDE" "% XINCLUDE"
+    "%XINSCAN" "% XINSCAN"
+    )
+  "PL/I preprocessor 'directives' and macro statements.  A minimal set.")
+
 
 ;;; PL/I faces.
 
@@ -353,10 +381,19 @@ The set of names that can be used to qualify a PL/I piece of data.")
   )
 
 
-(defcustom pl1-statements-face 'font-lock-builtin-face
+(defcustom pl1-statements-face 'font-lock-keyword-face ; 'font-lock-builtin-face
   "The face used to fontify 'statements' in PL/I mode.
 
 Statements are actually the 'commands' or 'verbs' defined by PL/I."
+  :group 'pl1
+  :type 'symbol
+  )
+
+
+(defcustom pl1-directives-face 'font-lock-preprocessor-face
+  "The face used to fontify 'directives' in PL/I mode.
+
+Directives are actually akin to the 'commands' or 'verbs' defined by PL/I."
   :group 'pl1
   :type 'symbol
   )
@@ -374,11 +411,13 @@ Statements are actually the 'commands' or 'verbs' defined by PL/I."
 
     (,pl1-labels . (2 ,pl1-labels-face))
 
-    (,(regexp-opt pl1-statements 'words) . ,pl1-statements-face)
+    (,(regexp-opt pl1-statements 'symbols) . ,pl1-statements-face)
 
     (,(regexp-opt pl1-operators nil) . ,pl1-operators-face)
 
-    (,(regexp-opt pl1-data-attributes 'words) . ,pl1-attributes-face)
+    (,(regexp-opt pl1-data-attributes 'symbols) . ,pl1-attributes-face)
+
+    (,(regexp-opt pl1-directives 'symbols) . ,pl1-directives-face)
 
     ;; These must be last.
     ;; (,pl1-card-end-comments-1 . (1 ,pl1-comment-face))
