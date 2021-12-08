@@ -357,6 +357,7 @@ This is obtained by submitting a job to the card reader on PORT."
 ;;;; ========
 
 (add-to-list 'auto-mode-alist '("\\.asma\\'" . asmibm-mode))
+(add-to-list 'auto-mode-alist '("\\.bal\\'" . asmibm-mode))
 
 (provide 'asmibm-mode)
 
