@@ -52,21 +52,34 @@ that IBM release in the public domain."
 
 
 (defvar asmibm-names
-  "^\\([^* ][[:graph:]]+\\)"
-  "ASM IBM names.
+  "^\\([[:alpha:]][[:alnum:]]*\\)"
+  "ASM IBM names (or labels).
 
 These are the 'names'of instructions.")
 
 
+;; (defvar asmibm-names
+;;   "^\\([^* ][[:graph:]]+\\)"
+;;   "ASM IBM names.
+;;
+;; These are the 'names'of instructions.")
+
 (defvar asmibm-instructions
-  "^\\([^* ][[:graph:]]+\\| +\\) +\\([[:graph:]]+\\)"
+  "^\\([[:alpha:]][[:alnum:]]*\\)?[[:blank:]]+\\([[:alpha:]][[:alnum:]]*\\)"
   "ASM IBM instructions.
 
-These are the instructions mnemonics.")
+These are the instructions mnemonics.
+The second regexp group contains the istruction name.")
+
+;; (defvar asmibm-instructions
+;;   "^\\([^* ][[:graph:]]+\\| +\\) +\\([[:graph:]]+\\)"
+;;   "ASM IBM instructions.
+
+;; These are the instructions mnemonics.")
 
 
 (defvar asmibm-registers
-  "R[0-9][1-6]?"
+  "R[0-9][0-5]?"
   "ASM IBM register names.")
 
 
@@ -78,11 +91,20 @@ A '*' at the beginning of the card (line) marks a comment.")
 
 
 (defvar asmibm-card-end-comments-1
-  "^[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
-  "ASM IBM 'end of card' comments for 'full' cards..
+  "^\\([[:alpha:]][[:alnum:]]*\\)?[[:blank:]]+[[:alpha:]][[:alnum:]]*[[:blank:]]+[-[:alnum:],*='()+]?\\([[:graph:]]*\\)$
+     "
+  "ASM IBM 'end of card' comments for 'full' cards.
 
 Anything after the 'operands' in a card is a comment; this regexp
 selects them.")
+
+
+;; (defvar asmibm-card-end-comments-1
+;;   "^[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
+;;   "ASM IBM 'end of card' comments for 'full' cards..
+
+;; Anything after the 'operands' in a card is a comment; this regexp
+;; selects them.")
 
 
 (defvar asmibm-card-end-comments-2
@@ -104,9 +126,228 @@ selects them in case of 'no operands' cards that do not have the
 non blank character.")
 
 
+;; asmibm-attribute-symbol
+;; Note that the following does only attributed symbols and not
+;; symbols and expressions as per IBM specs.
+
+(defvar asmibm-attributed-symbol
+  "\\([LKDINOST]'[[:alnum:]]+\\|L'\\*\\)"
+
+  "ASM IBM 'attributed terms.
+
+This is typically the 'length' of something, e.g.,
+
+    L'FOOBAR
+
+indicating the length of FOOBAR.
+Other 'attributes' are introduced by the other letters.
+
+See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-references
+")
+
+
 (defvar asmibm-jcl
   "^//.*$"
   "Lines starting with '//' are assumed to be JCL which wraps the Assembler.")
+
+
+;; asmibm-card-remarks
+;;
+;; IBM assembly is old, and it uses some messed up syntax, especially
+;; when it comes to 'end of lined (or card) remarks' (i.e., comments)
+;; and 'strings'.
+;;
+;; Hence the hairball below, to be used for font-lock.
+;;
+;; Notes:
+;; This is the first attempt.  But it looks like font-lock-mode (and
+;; font-lock-fontifiy-buffer, alongside font-lock-defaults) keep
+;; calling it expecting it to work several times in a row.  In other
+;; words it should always return t even is the match-data were empty:
+;; this seems incostistent, although there could always be a match for
+;; "^.*$".
+;; This is the reason why we terminate a search with
+;;
+;;     (re-search-forward ".*$" nil nil)
+;;
+;; at the end of line.
+
+
+(cl-defun asmibm-card-remarks (&optional (limit (line-end-position)))
+  ;; When called programmatically `limit' is end of buffer.
+  ;; (interactive)
+
+  (message "\nASMIBM CARD REMARK: entered with limit = %s @%s" limit (point))
+
+  (condition-case nil
+      (let* ((current-point (point))
+	     (post-instr-point
+	      (re-search-forward asmibm-instructions nil nil))
+	     
+	     ;; Now point should be at the end of the instruction.
+	     ;; I can start skipping over the operands characters,
+	     ;; including strings and attributed symbols.
+	     
+	     (skipped-ws (skip-chars-forward "[:blank:]" limit))
+	     (first-operand-point (point))
+	     (operand-pos first-operand-point)
+	     (first-remark-point nil)
+	     )
+        (message "ASMIBM CARD REMARK: asserting")
+	(cl-assert (not (char-equal (following-char) ?\ ))) ; Being paranoid.
+	(cl-assert (not (bolp)))        ; Yep, very paranoid.
+	(message "ASMIBM CARD REMARK: asserted")
+
+	;; Now I am at the first character of the 'operands' of the
+	;; instruction.  Note that, as per IBM documentation, to
+	;; have "remarks" that are comments for instructions that
+	;; use zero arguments, there should be a lone comma on the
+	;; line, surrounded my spaces, signifying "I am the operand
+	;; list".
+
+	(cl-labels ((finish-remark-parsing
+		     ()
+		     (message "ASMIBM CARD REMARK: finishing")
+		     
+		     ;; We get here in one case.
+		     ;; We have a blank character at hand and we need
+		     ;; to see whether there is 'end of line/card'
+		     ;; comment.
+		     ;; If so we need to fix the match and return t,
+		     ;; otherwise we return nil.
+		     (skip-chars-forward "[:blank:]" limit)
+
+		     (message "ASMIBM CARD REMARK: char after blanks `%c'" (char-after))
+
+		     (if (< (point) (line-end-position))
+			 ;; Something non blank found before end of line.
+			 ;; Fix match
+			 (cl-return-from asmibm-card-remarks
+			   (let ((result (re-search-forward ".*$" limit t)))
+			     (message "ASMIBM CARD REMARK: finishing match data \"%s\" %s"
+			      	      (match-string 0)
+			     	      (match-data))
+			     result))
+		       (cl-return-from asmibm-card-remarks
+			 (progn
+			   (message "ASMIBM CARD REMARK: finishing with no match")
+			   ;; nil
+			   (finish-eol-success)
+			   )
+			 ))
+		     )
+
+		    (finish-eol-success
+		     ()
+		     (progn
+		       (message "ASMIBM CARD REMARK: finishing at eol %s %s"
+				(point)
+				(line-end-position))
+		       (cl-return-from asmibm-card-remarks
+			 (re-search-forward ".*$" limit t))
+		       )
+		     )
+		    		    
+		    (advance
+		     ()
+		     (forward-char)
+		     (setq operand-pos (point))
+		     )
+		    
+		    (in-string
+		     ()
+		     ;; We are just before a "'"
+
+		     (message "ASMIBM CARD REMARK: in-string")
+		     ;; Just to be paranoid...
+		     (cl-assert (char-equal ?' (char-after))
+			        t
+			        "in-string cl-label")
+			       
+		     (forward-char)
+		     (let ((string-end-pos
+			    (search-forward "'"
+					    (line-end-position)
+					    t))
+			   )
+		       ;; We should have skipped the string
+		       ;; now (in a dumb way for the time
+		       ;; being; there are probably some
+		       ;; corner cases not considered here.)
+
+		       ;; (if string-end-pos
+		       ;; 	   (message "ASMIBM CARD REMARK: in-string after `%c'" (char-after))
+		       ;; 	 (message "ASMIBM CARD REMARK: in-string ooooops."))
+
+		       (if string-end-pos
+			   (setq operand-pos string-end-pos) ; We are cool.
+			 (setq operand-pos (point)) ; We pray.
+			 ))
+		     )
+		    )
+	  (message "ASMIBM CARD REMARK: in loop with operand-pos = %s, eol = %s"
+	   	   operand-pos
+	   	   (line-end-position))
+	  
+	  (while (and operand-pos
+		      (< operand-pos limit)
+		      (< operand-pos (line-end-position)))
+	    
+	    (let ((c (following-char)))
+	      (message "ASMIBM CARD REMARK: in loop with c = `%c'" c)
+	      
+	      (cond ((equal (char-syntax c) ?\ ) ; Found a space; skip to first non blank.
+		     (skip-chars-forward "[:blank:]" limit)
+		     (finish-remark-parsing)
+		     )
+
+		    ((char-equal c ?') ; Tricky part: string or attribute?
+		     (let ((prev-char (preceding-char)))
+
+		       (message "ASMIBM CARD REMARK: attribute with prev c = `%c'"
+		                prev-char)
+		       
+		       ;; Is this an attributed expression
+		       (if (cl-find prev-char "LKDINOST") ; Possible attribute.
+			   (cl-case (char-before (1- (point)))
+			     ((?+ ?- ?/ ?* ?\( ?\) ?, ?\ ?\t)
+			      ;; Possible 'operators'. Last is space!
+			      ;; We have (almost surely) an attributed
+			      ;; expression.
+			      ;; Keep going without bothering to deal
+			      ;; with strings.
+
+			      ;; (message "ASMIBM CARD REMARK: attributed")
+			      (advance)
+			      )
+			     (t
+			      ;; Something else? We are probably in
+			      ;; the middle of an operand and
+			      ;; starting a proper string.
+			     
+			      (in-string)
+			      )
+			     )	; cl-case
+			 ;; else, we are in a string (we hope).
+			 (in-string)
+			 ))
+		     )
+		    (t			; Any other character
+		     (advance)
+		     )
+		    ))
+	    )				; while...
+
+	  (message "ASMIBM CARD REMARK: no match")
+	  (if (>= operand-pos limit)
+	      nil ; We are out of the loop past the limit, we finish with NIL.
+	    (finish-eol-success)
+	    )
+	  )				; cl-labels...
+	)				; let*...
+    ;; condition-case catchers...
+    (search-failed (message "ASMIBM CARD REMARK: search failed.") nil)
+    ))
 
 
 ;;; ASM IBM faces.
@@ -141,11 +382,24 @@ non blank character.")
   :type 'symbol
   )
 
-(defcustom asmibm-comment-face 'font-lock-comment-face
+(defface asmibm-comment-face-red
+  '((t :foreground "red" :weight bold))
+  "Face to colorize comments in ASM IBM mode."
+  :group 'asmibm
+  )
+
+
+(defcustom asmibm-comment-face 'font-lock-comment-face ; 'asmibm-comment-face-red
   "The face used to fontify 'comments' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
   )
+
+;; (defcustom asmibm-comment-face 'font-lock-comment-face
+;;   "The face used to fontify 'comments' in ASM IBM mode."
+;;   :group 'asmibm
+;;   :type 'symbol
+;;   )
 
 (defcustom asmibm-grey-face 'shadow
   "The face used to 'fontify out' possible JCL when assembler is embedded."
@@ -159,13 +413,19 @@ non blank character.")
     (,asmibm-names . (1 asmibm-names-face))
     (,asmibm-instructions . (2 asmibm-operations-face))
     ;; (,asmibm-registers . ,asmibm-operators-face)
-		   
+
+    
     (,asmibm-card-end-comments-0 . ,asmibm-comment-face)
-    (,asmibm-card-end-comments-1 . (1 ,asmibm-comment-face))
+    (asmibm-card-remarks . ,asmibm-comment-face)
+    ;; (,asmibm-card-end-comments-1 . (2 ,asmibm-comment-face))
     ;; (,asmibm-card-end-comments-2 . (1 ,asmibm-comment-face))
     (,asmibm-card-end-comments-3 . (1 ,asmibm-comment-face))
 
-    (,asmibm-strings . (0 ,asmibm-string-face t))
+    (,asmibm-attributed-symbol . (1 ,asmibm-operands-face))
+
+    ;; (,asmibm-strings . (0 ,asmibm-string-face t))
+    (,asmibm-strings . (0 ,asmibm-string-face))
+
 
     (,asmibm-jcl . (0 asmibm-grey-face t))
     )
@@ -175,7 +435,8 @@ non blank character.")
 
 (defvar asmibm-font-lock-defaults
   (list 'asmibm-font-lock-keywords
-	nil ; Do syntax based processing.
+	;; nil ; Do syntax based processing.
+	t   ; Do not do syntax based processing.
 	)
   "The ASM IBM mode 'font-lock' defaults specification."
   )
