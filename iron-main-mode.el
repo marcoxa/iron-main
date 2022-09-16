@@ -74,9 +74,12 @@
   ;; (setq-local fci-rule-column 72)
   ;; (setq fci-rule-width 24)
 
-  (display-fill-column-indicator-mode)
-  (setq-local display-fill-column-indicator t
-	      display-fill-column-indicator-column 72)
+  (when (fboundp 'display-fill-column-indicator-mode)
+    ;; May not be loaded in older versions of Emacs.
+    
+    (display-fill-column-indicator-mode)
+    (setq-local display-fill-column-indicator t
+		display-fill-column-indicator-column 72))
 
   ;; Always start ruler.
   (ruler-mode)
