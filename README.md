@@ -102,6 +102,9 @@ instance.
 
 **asmibm-mode** is a major mode to handle Assembler/IBM MVS or z/OS
 ASM IBM.  The mode just does highlighting and some minor indentation.
+It is different form the "standard" Emacs assembler mode because of
+some syntax peculiarities that required some special treatment for
+Font Lock Mode.
 
 More functionalities may come in the future.
 
