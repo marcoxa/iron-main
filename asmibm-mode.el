@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20201206.1
+;; Version: 2022-09-24.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -52,7 +52,7 @@ that IBM release in the public domain."
 
 
 (defvar asmibm-names
-  "^\\([[:alpha:]][[:alnum:]]*\\)"
+  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)"
   "ASM IBM names (or labels).
 
 These are the 'names'of instructions.")
@@ -65,7 +65,7 @@ These are the 'names'of instructions.")
 ;; These are the 'names'of instructions.")
 
 (defvar asmibm-instructions
-  "^\\([[:alpha:]][[:alnum:]]*\\)?[[:blank:]]+\\([[:alpha:]][[:alnum:]]*\\)"
+  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)?[[:blank:]]+\\([[:alpha:]][[:alnum:]@$#_]*\\)"
   "ASM IBM instructions.
 
 These are the instructions mnemonics.
@@ -91,7 +91,7 @@ A '*' at the beginning of the card (line) marks a comment.")
 
 
 (defvar asmibm-card-end-comments-1
-  "^\\([[:alpha:]][[:alnum:]]*\\)?[[:blank:]]+[[:alpha:]][[:alnum:]]*[[:blank:]]+[-[:alnum:],*='()+]?\\([[:graph:]]*\\)$
+  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)?[[:blank:]]+[[:alpha:]][[:alnum:]@$#_]*[[:blank:]]+[-[:alnum:],*='()+]?\\([[:graph:]]*\\)$
      "
   "ASM IBM 'end of card' comments for 'full' cards.
 
@@ -382,6 +382,9 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
   :type 'symbol
   )
 
+
+;; Just a try...
+
 (defface asmibm-comment-face-red
   '((t :foreground "red" :weight bold))
   "Face to colorize comments in ASM IBM mode."
@@ -498,6 +501,9 @@ Not all features of HLASM are currently supported."
 			   :weight 'bold
 			   :foreground "Forest Green") ; May be too much.
 
+  (face-remap-add-relative asmibm-comment-face
+                           :foreground "cyan")
+  
   ;; Comments.
   ;; (setq-local comment-start "//\*")
   ;; (setq-local comment-end "")
