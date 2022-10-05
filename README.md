@@ -1,18 +1,18 @@
 # IRON MAIN
 
 The **mainframe** is, by definition, **iron**.  **IRON MAIN** is a
-packaged set of utilities to make **Emacs** usable to edit (and
-minimally interact) with a mainframe.
+packaged set of utilities to make **Emacs** usable to edit files --
+ahem, datasets -- and minimally interact with a *mainframe*.
 
 The *mainframe* is, for the time being, an IBM architecture
 *machine* (or an emulator - see below) running a variant of MVS or
 z/OS.
 
-Some motivation: as of Fall 2020, there appeared to be no [*Job
-Control Language*](https://en.wikipedia.org/wiki/Job_Control_Language)
-(JCL) mode (that is, a `jcl-mode`) floating around the Emacs Internet
-world.  Probably there was no need for it.  Yet.  So it seemed to be a
-good idea to write one.
+Some motivation: as of Fall 2022 (since Fall 2020), there appeared to
+be no [*Job Control Language*](https://en.wikipedia.org/wiki/Job_Control_Language) (JCL)
+mode (that is, a `jcl-mode`) floating around the Emacs Internet world.
+Probably there was no need for it.  Yet.  So it seemed to be a good
+idea to write one.
 
 The result is this minimal collection of tools and modes in Emacs Lisp
 to interact with the mainframe.
