@@ -46,6 +46,13 @@
   "The location of the IRON MAIN library \"tests\" folder.")
 
 
+(defvar iron-main--do-recompile-dir nil
+  "Do we compile the `iron-main' folder?
+
+Internal variable controlling whether the loading of the package
+should cause the (re)compilation fo the folder.")
+
+
 ;; The order of the require and load calls is relevant.
 
 (require 'ruler-mode)
@@ -76,7 +83,8 @@
 ;;;; Epilogue
 ;;;; ========
 
-(byte-recompile-directory iron-main-path 0)
+(if iron-main--do-recompile-dir
+    (byte-recompile-directory iron-main-path 0))
 
 (provide 'iron-main)
 
