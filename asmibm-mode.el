@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 2022-09-24.1
+;; Version: 2022-10-05.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -28,7 +28,7 @@
 This mode is part of the IRON MAIN package."
   :group 'languages)
 
-(defcustom asmibm-os-flavor "MVS 3.8j"
+(defcustom asmibm-mode-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
 The values of this variable are strings starting either with 'MVS' or
@@ -46,16 +46,16 @@ that IBM release in the public domain."
 ;;; We inherit from standard asm-mode, so we just need things for
 ;;; comments at the end of a line.
 
-(defvar asmibm-strings
+(defvar asmibm-mode--strings
   "'.*'"
   "ASM IBM strings.")
 
 
-(defvar asmibm-names
-  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)"
+(defvar asmibm-mode--names
+  "^\\([[:alpha:]&.][[:alnum:]@$#_&.]*\\|\\.[:alpha:][[:alnum:]@$#_&.]*\\)"
   "ASM IBM names (or labels).
 
-These are the 'names'of instructions.")
+These are the 'names' of instructions.")
 
 
 ;; (defvar asmibm-names
@@ -64,8 +64,8 @@ These are the 'names'of instructions.")
 ;;
 ;; These are the 'names'of instructions.")
 
-(defvar asmibm-instructions
-  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)?[[:blank:]]+\\([[:alpha:]][[:alnum:]@$#_]*\\)"
+(defvar asmibm-mode--instructions
+  "^\\([[:alpha:]&.][[:alnum:]@$#_&.]*\\)?[[:blank:]]+\\([[:alpha:]@$#&._][[:alnum:]@$#&._]*\\)"
   "ASM IBM instructions.
 
 These are the instructions mnemonics.
@@ -78,20 +78,31 @@ The second regexp group contains the istruction name.")
 ;; These are the instructions mnemonics.")
 
 
-(defvar asmibm-registers
+(defvar asmibm-mode--16-white-columns
+  "^ \{16\}"
+
+  "ASM IBM continuation line prefix.
+
+Continuation lines must start at column 16.  This regexp matches 16
+spaces (columns) at the beginning of line.")
+
+
+(defvar asmibm-mode--registers
   "R[0-9][0-5]?"
   "ASM IBM register names.")
 
 
-(defvar asmibm-card-end-comments-0
-  "^\\*.*$"
-  "ASM IBM 'comment' card.
+(defvar asmibm-mode--card-end-comments-0
+  "^\\.?\\*.*$"
+  "ASM IBM 'comment' card (single '*' is for regular assembler, '.*'
+is for macros.
 
-A '*' at the beginning of the card (line) marks a comment.")
+A '*' or a '.*' (for macros) at the beginning of the card (line) marks
+a comment.")
 
 
-(defvar asmibm-card-end-comments-1
-  "^\\([[:alpha:]][[:alnum:]@$#_]*\\)?[[:blank:]]+[[:alpha:]][[:alnum:]@$#_]*[[:blank:]]+[-[:alnum:],*='()+]?\\([[:graph:]]*\\)$
+(defvar asmibm-mode--card-end-comments-1
+  "^\\([[:alpha:]&.][[:alnum:]@$#_&.]*\\)?[[:blank:]]+[[:alpha:]@$#&._][[:alnum:]@$#&._]*[[:blank:]]+[-[:alnum:],*='()+]?\\([[:graph:]]*\\)$
      "
   "ASM IBM 'end of card' comments for 'full' cards.
 
@@ -107,7 +118,7 @@ selects them.")
 ;; selects them.")
 
 
-(defvar asmibm-card-end-comments-2
+(defvar asmibm-mode-card-end-comments-2
   "^ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "ASM IBM 'end of card' comments for 'continuation' cards.
 
@@ -116,7 +127,7 @@ selects them in case of 'continuation' cards that do not have the
 'name' and 'operation'.")
 
 
-(defvar asmibm-card-end-comments-3
+(defvar asmibm-mode--card-end-comments-3
   "^ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "ASM IBM 'end of card' comments for 'no operands' cards.
 
@@ -130,7 +141,7 @@ non blank character.")
 ;; Note that the following does only attributed symbols and not
 ;; symbols and expressions as per IBM specs.
 
-(defvar asmibm-attributed-symbol
+(defvar asmibm-mode--attributed-symbol
   "\\([LKDINOST]'[[:alnum:]]+\\|L'\\*\\)"
 
   "ASM IBM 'attributed terms.
@@ -146,7 +157,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ")
 
 
-(defvar asmibm-jcl
+(defvar asmibm-mode--jcl
   "^//.*$"
   "Lines starting with '//' are assumed to be JCL which wraps the Assembler.")
 
@@ -173,7 +184,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;; at the end of line.
 
 
-(cl-defun asmibm-card-remarks (&optional (limit (line-end-position)))
+(cl-defun asmibm-mode--card-remarks (&optional (limit (line-end-position)))
   ;; When called programmatically `limit' is end of buffer.
   ;; (interactive)
 
@@ -284,7 +295,8 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 			 (setq operand-pos (point)) ; We pray.
 			 ))
 		     )
-		    )
+		    )			; labels functions.
+	  
 	  (message "ASMIBM CARD REMARK: in loop with operand-pos = %s, eol = %s"
 	   	   operand-pos
 	   	   (line-end-position))
@@ -310,7 +322,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 		       ;; Is this an attributed expression
 		       (if (cl-find prev-char "LKDINOST") ; Possible attribute.
 			   (cl-case (char-before (1- (point)))
-			     ((?+ ?- ?/ ?* ?\( ?\) ?, ?\ ?\t)
+			     ((?+ ?- ?/ ?* ?\( ?\) ?, ?\t ?\ )
 			      ;; Possible 'operators'. Last is space!
 			      ;; We have (almost surely) an attributed
 			      ;; expression.
@@ -350,33 +362,314 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
     ))
 
 
+;; asmibm-mode--parse-operand
+;;
+;; Trying to parse the lovely "expression".
+;;
+;; Notes:
+;;
+;; The parser is stupid and does not span lines.  That is, if you open
+;; a parenthesis you must close it on the same line.
+
+(cl-defun asmibm-mode--parse-operand (&optional (limit (line-end-position)))
+  ;; When called programmatically `limit' is end of buffer.
+  ;; (interactive)
+
+  (message "\nASMIBM PARSE OPERAND: entered with limit = %s @%s" limit (point))
+
+  (condition-case nil
+      (let* ((current-point (point))
+	     (post-instr-point
+	      (re-search-forward asmibm-instructions nil nil))
+	     
+	     ;; Now point should be at the end of the instruction.
+	     ;; I can start skipping over the operands characters,
+	     ;; including strings and attributed symbols.
+	     
+	     (skipped-ws (skip-chars-forward "[:blank:]" limit))
+	     (first-operand-point (point))
+	     (operand-pos first-operand-point)
+	     (first-remark-point nil)
+	     )
+        (message "ASMIBM PARSE OPERAND: asserting")
+	(cl-assert (not (char-equal (following-char) ?\ ))) ; Being paranoid.
+	(cl-assert (not (bolp)))        ; Yep, very paranoid.
+	(message "ASMIBM PARSE OPERAND: asserted")
+
+	;; Now I am at the first character of the 'operands' of the
+	;; instruction.  Note that, as per IBM documentation, to
+	;; have "remarks" that are comments for instructions that
+	;; use zero arguments, there should be a lone comma on the
+	;; line, surrounded my spaces, signifying "I am the operand
+	;; list".
+
+	(cl-labels ((finish-remark-parsing
+		     ()
+		     (message "ASMIBM PARSE OPERAND: finishing")
+		     
+		     ;; We get here in one case.
+		     ;; We have a blank character at hand and we need
+		     ;; to see whether there is 'end of line/card'
+		     ;; comment.
+		     ;; If so we need to fix the match and return t,
+		     ;; otherwise we return nil.
+		     (skip-chars-forward "[:blank:]" limit)
+
+		     (message "ASMIBM PARSE OPERAND: char after blanks `%c'" (char-after))
+
+		     (if (< (point) (line-end-position))
+			 ;; Something non blank found before end of line.
+			 ;; Fix match
+			 (cl-return-from asmibm-card-remarks
+			   (let ((result (re-search-forward ".*$" limit t)))
+			     (message "ASMIBM PARSE OPERAND: finishing match data \"%s\" %s"
+			      	      (match-string 0)
+			     	      (match-data))
+			     result))
+		       (cl-return-from asmibm-card-remarks
+			 (progn
+			   (message "ASMIBM PARSE OPERAND: finishing with no match")
+			   ;; nil
+			   (finish-eol-success)
+			   )
+			 ))
+		     )
+
+		    (finish-eol-success
+		     ()
+		     (progn
+		       (message "ASMIBM PARSE OPERAND: finishing at eol %s %s"
+				(point)
+				(line-end-position))
+		       (cl-return-from asmibm-card-remarks
+			 (re-search-forward ".*$" limit t))
+		       )
+		     )
+		    		    
+		    (advance
+		     ()
+		     (forward-char)
+		     (setq operand-pos (point))
+		     )
+		    
+		    (in-string
+		     ()
+		     ;; We are just before a "'"
+
+		     (message "ASMIBM PARSE OPERAND: in-string")
+		     ;; Just to be paranoid...
+		     (cl-assert (char-equal ?' (char-after))
+			        t
+			        "in-string cl-label")
+			       
+		     (forward-char)
+		     (let ((string-end-pos
+			    (search-forward "'"
+					    (line-end-position)
+					    t))
+			   )
+		       ;; We should have skipped the string
+		       ;; now (in a dumb way for the time
+		       ;; being; there are probably some
+		       ;; corner cases not considered here.)
+
+		       ;; (if string-end-pos
+		       ;; 	   (message "ASMIBM PARSE OPERAND: in-string after `%c'" (char-after))
+		       ;; 	 (message "ASMIBM PARSE OPERAND: in-string ooooops."))
+
+		       (if string-end-pos
+			   (setq operand-pos string-end-pos) ; We are cool.
+			 (setq operand-pos (point)) ; We pray.
+			 ))
+		     )
+		    )			; labels functions.
+	  
+	  (message "ASMIBM PARSE OPERAND: in loop with operand-pos = %s, eol = %s"
+	   	   operand-pos
+	   	   (line-end-position))
+	  
+	  (while (and operand-pos
+		      (< operand-pos limit)
+		      (< operand-pos (line-end-position)))
+	    
+	    (let ((c (following-char)))
+	      (message "ASMIBM PARSE OPERAND: in loop with c = `%c'" c)
+	      
+	      (cond ((equal (char-syntax c) ?\ ) ; Found a space; skip to first non blank.
+		     (skip-chars-forward "[:blank:]" limit)
+		     (finish-remark-parsing)
+		     )
+
+		    ((char-equal c ?') ; Tricky part: string or attribute?
+		     (let ((prev-char (preceding-char)))
+
+		       (message "ASMIBM PARSE OPERAND: attribute with prev c = `%c'"
+		                prev-char)
+		       
+		       ;; Is this an attributed expression
+		       (if (cl-find prev-char "LKDINOST") ; Possible attribute.
+			   (cl-case (char-before (1- (point)))
+			     ((?+ ?- ?/ ?* ?\( ?\) ?, ?\t ?\ )
+			      ;; Possible 'operators'. Last is space!
+			      ;; We have (almost surely) an attributed
+			      ;; expression.
+			      ;; Keep going without bothering to deal
+			      ;; with strings.
+
+			      ;; (message "ASMIBM PARSE OPERAND: attributed")
+			      (advance)
+			      )
+			     (t
+			      ;; Something else? We are probably in
+			      ;; the middle of an operand and
+			      ;; starting a proper string.
+			     
+			      (in-string)
+			      )
+			     )	; cl-case
+			 ;; else, we are in a string (we hope).
+			 (in-string)
+			 ))
+		     )
+		    (t			; Any other character
+		     (advance)
+		     )
+		    ))
+	    )				; while...
+
+	  (message "ASMIBM PARSE OPERAND: no match")
+	  (if (>= operand-pos limit)
+	      nil ; We are out of the loop past the limit, we finish with NIL.
+	    (finish-eol-success)
+	    )
+	  )				; cl-labels...
+	)				; let*...
+    ;; condition-case catchers...
+    (search-failed (message "ASMIBM PARSE OPERAND: search failed.") nil)
+    ))
+
+
+;; asmibm-mode--parse-statement
+;;
+;; Let's bite the bullet.  Parse an entire statement and set the match
+;; accordingly.
+
+(cl-defun asmibm-mode--parse-statement (&optional (limit (line-end-position)))
+  ;; When called programmatically `limit' is end of buffer.
+  (interactive)
+
+  (message "\nASMIBM PARSE STMT: entered with limit = %s @%s" limit (point))
+
+  (if (asmibm-mode--continuation-line-p)
+      (asmibm-mode--parse-continuation-card limit)
+    (asmibm-mode--parse-statement-card limit)
+    ))
+
+
+(cl-defun asmibm-mode--continuation-line-p ()
+  (interactive)
+  (save-excursion
+    (message "\nASMIBM IS-CONT: line-number-at-pos = %s."
+             (line-number-at-pos))
+    (let ((n-line (forward-line -1)))
+      (cl-case n-line
+	(-1 (message "\nASMIBM IS-CONT: n-line = %s on first line." n-line)) ; Do nothing.
+	(0 (message "\nASMIBM IS-CONT: n-line = %s, current line = %s, (%s %s)."
+		    n-line
+		    (line-number-at-pos)
+		    (line-beginning-position)
+		    (line-end-position)))
+	)
+
+      (when (zerop n-line)
+	(let ((c71 (move-to-column 71)))
+          (message "ASMIBM IS-CONT: moved to column %s." c71)
+	  (cond ((< c71 71)		; Line shortes than 72.
+		 (message "\nASMIBM IS-CONT: card is only %s long." c71)
+		 nil
+		 )
+		((and (= c71 71)
+		      (= (char-syntax (char-after)) ?\ ))
+		 ;; Nothing on column 72.
+		 ;; Do nothing.
+		 (message "\nASMIBM IS-CONT: card is 71 or more long, but C72 is a blank.")
+		 nil
+		 )
+		((and (= c71 71)                                ; Paranoid.
+		      (not (= (char-syntax (char-after)) ?\ ))) ; Paranoid.
+		 ;;
+		 (message "\nASMIBM IS-CONT: card is 71 or more long, and C72 is ?\%c."
+                          (char-after))
+		 t
+		 )
+		))
+	))))
+
+
+(defvar asmibm-mode--bad-cont-line-regexp
+  (rx (group)				; Dummy name/label
+      (group)				; Dummy instruction
+      (group)				; Dummy operands
+      (group)				; Dummy remark
+      (group (zero-or-more any))
+      eol
+      ))
+
+
+(cl-defun asmibm-mode--parse-continuation-card (limit)
+  (beginning-of-line)
+  (let ((c16 (skip-chars-forward "[:space:]" limit)))
+    (cond ((/= c16 16)
+	   ;; Something wrong.
+	   (message "\nASMIBM PARSE CONT: line is %d long, c16 is %s, char is ?\%c."
+		    (- (line-end-position) (line-beginning-position))
+		    c16
+		    (char-after))
+	   (cl-return-from asmibm-mode--parse-continuation-card
+	     (re-search-forward asmibm-mode--bad-cont-line-regexp limit t))
+	   )
+	  
+	  ((= c16 16)
+	   (asmibm-mode--parse-operands limit)
+	   )
+	  
+	  (t
+	   (message "\nASMIBM PARSE CONT: c16 is %s; something wrong is happening." c16)
+	   (cl-return-from asmibm-mode--parse-continuation-card
+	     nil)
+	   )
+
+	  )))
+  
+
+
 ;;; ASM IBM faces.
 
-(defcustom asmibm-string-face 'font-lock-string-face
+(defcustom asmibm-mode-string-face 'font-lock-string-face
   "The face used to fontify strings (single-quoted) in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
   )
 
-(defcustom asmibm-names-face 'font-lock-function-name-face
+(defcustom asmibm-mode-names-face 'font-lock-function-name-face
   "The face used to fontify 'names' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
   )
 
-(defcustom asmibm-operations-face 'font-lock-keyword-face
+(defcustom asmibm-mode-operations-face 'font-lock-keyword-face
   "The face used to fontify 'operations' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
   )
 
-(defcustom asmibm-operands-face 'font-lock-type-face
+(defcustom asmibm-mode-operands-face 'font-lock-type-face
   "The face used to fontify 'operands' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
   )
 
-(defcustom asmibm-operators-face 'font-lock-builtin-face
+(defcustom asmibm-mode-operators-face 'font-lock-builtin-face
   "The face used to fontify 'operators' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
@@ -385,14 +678,14 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 
 ;; Just a try...
 
-(defface asmibm-comment-face-red
+(defface asmibm-mode-comment-face-red
   '((t :foreground "red" :weight bold))
   "Face to colorize comments in ASM IBM mode."
   :group 'asmibm
   )
 
 
-(defcustom asmibm-comment-face 'font-lock-comment-face ; 'asmibm-comment-face-red
+(defcustom asmibm-mode-comment-face 'font-lock-comment-face ; 'asmibm-comment-face-red
   "The face used to fontify 'comments' in ASM IBM mode."
   :group 'asmibm
   :type 'symbol
@@ -404,14 +697,14 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;;   :type 'symbol
 ;;   )
 
-(defcustom asmibm-grey-face 'shadow
+(defcustom asmibm-mode-grey-face 'shadow
   "The face used to 'fontify out' possible JCL when assembler is embedded."
   :group 'asmibm
   :type 'symbol
   )
 
 
-(defvar asmibm-font-lock-keywords
+(defvar asmibm-mode--font-lock-keywords
   `(
     (,asmibm-names . (1 asmibm-names-face))
     (,asmibm-instructions . (2 asmibm-operations-face))
@@ -422,7 +715,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
     (asmibm-card-remarks . ,asmibm-comment-face)
     ;; (,asmibm-card-end-comments-1 . (2 ,asmibm-comment-face))
     ;; (,asmibm-card-end-comments-2 . (1 ,asmibm-comment-face))
-    (,asmibm-card-end-comments-3 . (1 ,asmibm-comment-face))
+    ;; (,asmibm-card-end-comments-3 . (1 ,asmibm-comment-face))
 
     (,asmibm-attributed-symbol . (1 ,asmibm-operands-face))
 
@@ -436,7 +729,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
   )
 
 
-(defvar asmibm-font-lock-defaults
+(defvar asmibm-mode--font-lock-defaults
   (list 'asmibm-font-lock-keywords
 	;; nil ; Do syntax based processing.
 	t   ; Do not do syntax based processing.
@@ -447,7 +740,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 
 ;;; asmibm-mode-syntax-table
 
-(defvar asmibm-mode-syntax-table
+(defvar asmibm-mode--syntax-table
   (let ((asmst (make-syntax-table)))
     ;; (modify-syntax-entry ?* ". 1" asmst)
     ;; (modify-syntax-entry ?\n "> " asmst)
@@ -460,7 +753,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;;; asmibm-keymap
 ;;; Not necessary.  define-derived-mode sets it up automatically.
 
-(defvar asmibm-mode-map
+(defvar asmibm-mode--map
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km prog-mode-map) ; Inherit from prog-mode-map!
     
@@ -471,11 +764,17 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 
 ;;; asmibm-imenu-generic-expression
 
-(defvar asmibm-imenu-generic-expression
-  '((nil "^\\([^* /]+\\) +[[:graph:]]+$" 1) ; Also avoid JCL
-    (nil "^\\([^* /]+\\) +[[:graph:]]+ .*$" 1)
+;; (defvar asmibm-imenu-generic-expression
+;;   '((nil "^\\([^* /]+\\) +[[:graph:]]+$" 1) ; Also avoid JCL
+;;     (nil "^\\([^* /]+\\) +[[:graph:]]+ .*$" 1)
+;;     )
+;;   "The ASM IBM Imenu regular expressions.")
+
+(defvar asmibm-mode--imenu-generic-expression
+  '((nil "^\\([[:alpha:]][[:alnum:]@$#_]*\\)" 1) ; Also avoid JCL
     )
   "The ASM IBM Imenu regular expressions.")
+
 
 
 ;;; asmibm-mode
@@ -491,17 +790,22 @@ Notes:
 
 Not all features of HLASM are currently supported."
 
-  :syntax-table asmibm-mode-syntax-table
+  :syntax-table asmibm-mode--syntax-table
 
-  (setq-local font-lock-defaults asmibm-font-lock-defaults)
+  (setq-local font-lock-defaults asmibm-mode--font-lock-defaults)
 
-  (face-remap-add-relative asmibm-operations-face  :weight 'bold)
+  (setq-default indent-tabs-mode nil)   ; Avoid spurious tabs.
 
-  (face-remap-add-relative asmibm-operators-face
+  (face-remap-add-relative asmibm-mode-operations-face
+                           :weight 'bold
+                           :foreground "red" ; REVEDIT/RPF color.
+                           )
+
+  (face-remap-add-relative asmibm-mode-operators-face
 			   :weight 'bold
 			   :foreground "Forest Green") ; May be too much.
 
-  (face-remap-add-relative asmibm-comment-face
+  (face-remap-add-relative asmibm-mode-comment-face
                            :foreground "cyan")
   
   ;; Comments.
@@ -512,27 +816,27 @@ Not all features of HLASM are currently supported."
 
   ;; Set up the mode keymap.
 
-  (use-local-map asmibm-mode-map)
+  (use-local-map asmibm-mode--map)
   (local-set-key (kbd "RET") 'electric-indent-just-newline)
   (local-set-key (kbd "TAB") 'tab-to-tab-stop)
 
 
   ;; Set up tab stops.
 
-  (setq-local tab-stop-list '(9 17 40))
+  (setq-local tab-stop-list '(9 15 40))
   
   
   ;; Set up the menus.
 
-  (easy-menu-define asmibm-mainframe-os-menu asmibm-mode-map
+  (easy-menu-define asmibm-mode--mainframe-os-menu asmibm-mode--map
     "ASM IBM commands"
     '("ASM IBM OS"
-      ["Submit Compilation" asmibm-compile]
-      ["Submit Compilation and Go" asmibm-compile-and-go])
+      ["Submit Compilation" asmibm-mode-compile]
+      ["Submit Compilation and Go" asmibm-mode-compile-and-go])
     )
 
   (setq-local imenu-generic-expression
-	      (reverse asmibm-imenu-generic-expression))
+	      (reverse asmibm-mode--imenu-generic-expression))
   (imenu-add-to-menubar "ASM IBM Code")
 
   ;; Start the IRON MAIN minor mode, which sets up the ruler and the
@@ -546,13 +850,13 @@ Not all features of HLASM are currently supported."
 
 ;;; Functions and Commands.
 
-(defvar asmibm-not-implemented-flag t
+(defvar asmibm-mode--not-implemented-flag t
   "Non-nil means the context where used is still unimplemented.")
 
 
 ;;; asmibm-compile-jcl
 
-(defvar asmibm-compile-jcl
+(defvar asmibm-mode-compile-jcl
   "//EASMICJ  JOB (%s),'%s',
 //            USER=%s,PASSWORD=%s,
 //            CLASS=A,
@@ -565,7 +869,7 @@ Not all features of HLASM are currently supported."
 This variable is acually a format string.")
 
 
-(defun asmibm-prepare-job (&optional
+(defun asmibm-mode-prepare-job (&optional
 			   acct
 			   name
 			   user
@@ -582,7 +886,7 @@ This variable is acually a format string.")
 
 ;;; asmibm-compile
 
-(defun asmibm-compile (&optional port)
+(defun asmibm-mode-compile (&optional port)
   "Compiles the buffer by submitting a job to the card reader on PORT."
   (interactive
    (if asmibm-not-implemented-flag
@@ -601,7 +905,7 @@ This variable is acually a format string.")
 
 ;;; asmibm-compile-and-go
 
-(defun asmibm-compile-and-go (&optional port)
+(defun asmibm-mode-compile-and-go (&optional port)
   "Compile and execute the buffer on the mainframe.
 
 This is obtained by submitting a job to the card reader on PORT."
