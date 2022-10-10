@@ -57,8 +57,8 @@
 
 (define-minor-mode iron-main-mode
   "A minor mode to edit files and interact with IBM MVS or z/OS."
-  nil
-  "//IRON-MAIN"
+  :initial-value nil
+  :lighter "//IRON-MAIN"
 
   :group 'iron-main
   :keymap (let ((km (make-sparse-keymap)))
