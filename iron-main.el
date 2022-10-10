@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2022-09-18.1
+;; Version: 2022-10-08.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -24,7 +24,7 @@
 ;; `asmibm-mode'.
 ;;
 ;; The code has been tested with MVS TK4- and MVS "Jay Moseley"
-;; build, running on a Hercules (SDL/Hyperion 4.2.x).
+;; build, running on a Hercules (SDL/Hyperion 4.4.x).
 ;; Useful links follow.
 ;;
 ;; Hercules: <http://www.hercules-390.eu/>
