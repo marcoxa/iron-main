@@ -82,12 +82,16 @@
 		display-fill-column-indicator-column 72))
 
   ;; Always start ruler.
-  (ruler-mode)
-  (if (fboundp 'iron-main-ruler-function)
-      (setq-local ruler-mode-ruler-function
-		  'iron-main-ruler-function)
-    (warn "IRON MAIN: specialized ruler builder undefined.")
-    )
+  ;; Unless we are in an older EMacs which may break because it is
+  ;; missing the function ruler-mode-text-scaled-window-width.
+  
+  (when (fboundp 'ruler-mode-text-scaled-window-width)
+    (ruler-mode)
+    (if (fboundp 'iron-main-ruler-function)
+        (setq-local ruler-mode-ruler-function
+                    'iron-main-ruler-function)
+      (warn "IRON MAIN: specialized ruler builder undefined.")
+      ))
   )
 
 
