@@ -371,7 +371,10 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;; The parser is stupid and does not span lines.  That is, if you open
 ;; a parenthesis you must close it on the same line.
 
-(cl-defun asmibm-mode--parse-operands (&optional (limit (line-end-position)))
+(cl-defun asmibm-mode--parse-operands (&optional
+                                       (limit (line-end-position))
+                                       (*debug-parse-operands* t)
+                                       )
   ;; This function must be called with (point) at the start of an operand.
   ;; At the end of the call, the point is at the first space after the
   ;; operand (which must be a full expression; cfr., Assembler reference).
@@ -384,385 +387,418 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
   
   (interactive)
 
-  (message "\nASMIBM PARSE OPERANDS: entered with limit = %s @%s" limit (point))
+  (cl-flet ((msg
+             (m &rest args)
+             (when *debug-parse-operands*
+               (apply 'message
+                      (concat "ASMIBM PARSE OPERANDS: " m)
+                      args)))
+            )
 
-  (condition-case nil
-      (let ((operand-pos (point)))
+    (message "\nASMIBM PARSE OPERANDS: entered with limit = %s @%s" limit (point))
+
+    (condition-case nil
+        (let ((operand-pos (point)))
 	
-        (message "ASMIBM PARSE OPERANDS: asserting")
-	(cl-assert (not (char-equal (following-char) ?\ ))) ; Being paranoid.
-	(cl-assert (not (bolp)))        ; Yep, very paranoid.
-	(message "ASMIBM PARSE OPERANDS: asserted")
+          (msg "asserting")
+          (cl-assert (not (char-equal (following-char) ?\ ))) ; Being paranoid.
+          (cl-assert (not (bolp)))      ; Yep, very paranoid.
+          (msg "asserted")
 
-	;; Now I am at the first character of the 'operands' of the
-	;; instruction.
+          ;; Now I am at the first character of the 'operands' of the
+          ;; instruction.
 
-        ;; The CL-LABELS here are a hand-crafted recursive descent
-        ;; parser.
-        ;;
-        ;; There are three different functions (plus a few utility
-        ;; ones). (a) functions for "terminals" and functions for
-        ;; "more terminals", as the parser assumes a somewhat
-        ;; right-recursive structure.
-        ;; Each "terminal" function takes as argument the "starting
-        ;; character" of the thing being parsed and finishes with
-        ;; (point) right after the parsing.  Functions implementing
-        ;; "more terminal" may check the first thing they see and do
-        ;; something appropriate; they also finish at the end of the
-        ;; last proper character.
+          ;; The CL-LABELS here are a hand-crafted recursive descent
+          ;; parser.
+          ;;
+          ;; There are three different functions (plus a few utility
+          ;; ones). (a) functions for "terminals" and functions for
+          ;; "more terminals", as the parser assumes a somewhat
+          ;; right-recursive structure.
+          ;; Each "terminal" function takes as argument the "starting
+          ;; character" of the thing being parsed and finishes with
+          ;; (point) right after the parsing.  Functions implementing
+          ;; "more terminal" may check the first thing they see and do
+          ;; something appropriate; they also finish at the end of the
+          ;; last proper character.
 
-        ;; Do not expect anything fancy, the parser is buit to skip
-        ;; over the operands of an instruction.  That's it.
+          ;; Do not expect anything fancy, the parser is buit to skip
+          ;; over the operands of an instruction.  That's it.
 
-        ;; Note that, as per IBM documentation, to have "remarks" that
-	;; are comments for instructions that use zero arguments,
-	;; there should be a lone comma on the line, surrounded my
-	;; spaces, signifying "I am the operand list".
+          ;; Note that, as per IBM documentation, to have "remarks" that
+          ;; are comments for instructions that use zero arguments,
+          ;; there should be a lone comma on the line, surrounded my
+          ;; spaces, signifying "I am the operand list".
 
-	(cl-labels
-            ((advance
-	      ()
-	      (forward-char)
-	      (setq operand-pos (point))
-	      )                         ; advance
+          (cl-labels
+              ((advance
+                ()
+                (forward-char)
+                (setq operand-pos (point))
+                )                       ; advance
 
-             (retreat
-	      ()
-	      (backward-char)
-	      (setq operand-pos (point))
-	      )                         ; retreat
+               (retreat
+                ()
+                (backward-char)
+                (setq operand-pos (point))
+                )                       ; retreat
 
-             (is-space
-              (c)
-              (equal (char-syntax c) ?\ )
-              )                         ; is-space
+               (is-space
+                (c)
+                (equal (char-syntax c) ?\ )
+                )                       ; is-space
 
-             (is-newline
-              (c)
-              (equal (char-syntax c) ?\n)
-              )                         ; is-newline
+               (is-newline
+                (c)
+                (equal (char-syntax c) ?\n)
+                )                       ; is-newline
 
-             (is-comma
-              (c)
-              (char-equal c ?\,)
-              )                         ; is-comma
-              
+               (is-comma
+                (c)
+                (char-equal c ?\,)
+                )                       ; is-comma
 
-             (finish-operands
-              (c)
-	      (message "ASMIBM PARSE OPERANDS: finishing operands.")
+                                        ; msg
+
+               (finish-operands
+                (c)
+                (message "XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                (msg "finishing operands.")
 		     
-	      ;; We get here in one case.
-	      ;; We have a blank character terminating the operands
-	      ;; field or we are at the end of a line.
+                ;; We get here in one case.
+                ;; We have a blank character terminating the operands
+                ;; field or we are at the end of a line.
 
-              (cl-assert (or (equal (char-syntax c) ?\ )
-                             (eolp)))
+                (cl-assert (or (eolp)
+                               (equal (char-syntax c) ?\ )))
 
-	      (message "ASMIBM PARSE OPERANDS: returning; point is @%d."
-                       (point))
+                (msg "returning; point is @%d." (point))
 
-	      (cl-return-from asmibm-mode--parse-operands (point))
-	      )                         ; finish-operands
+                (cl-return-from asmibm-mode--parse-operands (point))
+                )                       ; finish-operands
 
-             (finish-operand
-              (c)
-              (message "ASMIBM PARSE OPERANDS: finishing one operand; c = ?%c" c)
-              (cl-assert (char-equal c ?\,) t)
-              ;; (advance)
-              (message "ASMIBM PARSE OPERANDS: finished one operand.")
-              t
-              )                         ; finish-operand
+               (finish-operand
+                (c)
+                (msg "finishing one operand; c = ?%c" c)
+                (cl-assert (char-equal c ?\,) t)
+                ;; (advance)
+                (msg "finished one operand.")
+                t
+                )                       ; finish-operand
 		    
-	     (parse-string
-	      (c)
-	      ;; We are just before a "'"
+               (parse-string
+                (c)
+                ;; We are just before a "'"
 
-	      (message "ASMIBM PARSE OPERANDS: parse-string")
-	      ;; Just to be paranoid...
-	      (cl-assert (char-equal ?' c) t "in-string cl-label")
+                (msg "parse-string")
+                ;; Just to be paranoid...
+                (cl-assert (char-equal ?' c) t "in-string cl-label")
 			       
-	      (forward-char)
-	      (let ((string-end-pos
-		     (search-forward "'"
-				     (line-end-position)
-				     t))
-		    )
-		;; We should have skipped the string
-		;; now (in a dumb way for the time
-		;; being; there are probably some
-		;; corner cases not considered here.)
+                (forward-char)
+                (let ((string-end-pos
+                       (search-forward "'"
+                                       (line-end-position)
+                                       t))
+                      )
+                  ;; We should have skipped the string
+                  ;; now (in a dumb way for the time
+                  ;; being; there are probably some
+                  ;; corner cases not considered here.)
 
-		;; (if string-end-pos
-		;; 	   (message "ASMIBM PARSE OPERANDS: in-string after `%c'" (char-after))
-		;; 	 (message "ASMIBM PARSE OPERANDS: in-string ooooops."))
+                  (if string-end-pos
+                      (setq operand-pos string-end-pos) ; We are cool.
 
-		(if string-end-pos
-		    (setq operand-pos string-end-pos) ; We are cool.
-
-		  (setq operand-pos (point)) ; We pray.
-		  ))
-	      )                         ; parse-string
+                    (setq operand-pos (point)) ; We pray.
+                    ))
+                )                       ; parse-string
 		    
-             (parse-operands
-              (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-operands; c = ?%c" c)
-              (parse-operand c)
-              (message "ASMIBM PARSE OPERANDS: parse-operands; called parse-operand fc = ?%c"
-                       (following-char))
-              
-              (let ((c (following-char)))
-                (cond ((or (equal (char-syntax c) ?\ ) (eolp))
-                       ;; Found a space or a newline, end of operand.
-		       (finish-operands)
-		       )
-                      ((char-equal c ?\,)
+               (parse-operands
+                (c)
+                (msg "parse-operands; c = ?%c" c)
+                (parse-operand c)
+                (msg "parse-operands; called parse-operand fc = ?%c"
+                     (following-char))
+                (parse-more-operands (following-char))
+                )                       ; parse-operands
+
+               (parse-operand
+                (c)
+                (msg "parse-operand; c = ?%c" c)
+                (cond ((is-comma c)
+                       (msg "parse-operand; calling finish-operand pc = ?%c fc = ?%c"
+                            (char-before)
+                            (following-char))
+                       (msg "parse-operand; if I get here, there may be a problem.")
+                       ;; Should not get here now that there is parse-more-operands.
+                       ;; (retreat)
+                       (finish-operand (following-char)) ; Essentially a no-op.
+                       )
+                      ((or (is-space c) (eolp))
+                       (msg "parse-operand; if I get here, there's a problem.")
+                       (finish-operands c)
+                       )
+                      (t
+                       (parse-expressions c)
+                       )
+                      )
+                )                       ; parse-operands
+	     
+               (parse-more-operands
+                (c)
+                (msg "parse-more-operands; c = ?%c" c)
+                (cond ((or (eolp) (is-space c))
+                       ;; Found a space or a newline, end of operand(s).
+                       (finish-operands c)
+                       )
+                      ((is-comma c)
                        ;; Proceed to parse next operand, unless the
                        ;; next character is a blank or we are at the
                        ;; end of the line, as in the case before.
                        (advance)
-                       (if (or (equal (char-syntax (following-char)) ?\ ) (eolp))
-                           (finish-operands)
+                       (if (or (eolp) (is-space (following-char)))
+                           ;; (finish-operands c)
+                           (finish-operands (following-char))
                          (parse-operands (following-char)))
                        )
-                      ))
-              )                         ; parse-operands
-	     
-	     (parse-operand
-	      (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-operand; c = ?%c" c)
-	      (cond ((char-equal c ?\,)
-                     (message "ASMIBM PARSE OPERANDS: parse-operand; calling finish-operand pc = ?%c fc = ?%c"
-                              (char-before)
-                              (following-char))
-                     (retreat)
-                     (finish-operand (following-char)) ; Essentially a no-op.
-                     )
-                    ((or (equal (char-syntax c) ?\ ) (eolp))
-                     (finish-operands c)
-                     )
-                    (t
-                     (prog1 (parse-expression c)
-                       (message "ASMIBM PARSE OPERANDS: parse-operand; called parse-expression fc = ?%c"
-                                (following-char)))
-                     )
-                    )
-              )                         ; parse-operand
+                      )
+                )                       ; parse-operand
 
-             (parse-expression
-	      (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-expression; c = ?%c" c)
-	      (parse-term c)
-              (let ((fc (following-char)))
-                (message "ASMIBM PARSE OPERANDS: called parse-term; fc = ?%c" fc)
-                (cond ((char-equal fc ?\,)
-                       (prog1 (finish-operand fc)
-                         (message "ASMIBM PARSE OPERANDS: called finish-operand; fc = ?%c"
-                                  (following-char))
-                         )
-                       )
-                      ((or (equal (char-syntax fc) ?\ ) (eolp))
-                       (finish-operands fc))
+               (parse-expressions
+                (c)
+                (msg "parse-expressions; c = ?%c" c)
+                (parse-expression c)
+                (msg "parse-expressions; called parse-expressions fc = ?%c"
+                     (following-char))
+                (parse-more-expressions (following-char))
+                )                       ; parse-operands
+
+               (parse-expression
+                (c)
+                (msg "parse-expression; c = ?%c" c)
+                (parse-term c)
+                (parse-more-expressions (following-char))
+                )                       ; parse-expression
+		    
+               (parse-more-expressions
+                (c)
+                (msg "parse-more-expressions; c = ?%c" c)
+                (cond ((char-equal c ?\))
+                       ;; Closing of expression
+                       ;; Should not get here.
+                       (msg "parse-more-expressions; trouble with c = ?%c" c)
+                       ;; BUt, if we get here, we are really in a
+                       ;; parenthesized expression.  Leave the closing
+                       ;; parenthesis to be handled by
+                       ;; parse-parenthesized-expression.
+
+                       ;; (advance)
+                       t)
+                    
+                      ((char-equal c ?\()
+                       (parse-parenthesized-expression c))
+                    
+                      ((cl-find c "=+-*/")
+                       (advance)
+                       (parse-expressions (following-char)))
+                    
+                      ((char-equal c ?\')
+                       (parse-string c)
+                       (parse-more-expressions (following-char)))
+                    
+                      ((is-comma c)
+                       ;; (parse-expression)
+                       (msg "parse-more-expressions; am I here; c = ?%c" c)
+                       ;; (retreat)
+                       t)
+                    
+                      ((is-space c)
+                       ;; (retreat)
+                       t)
+                    
+                      ((equal (char-syntax c) ?\n)
+                       t)
+                      )
+                )                       ; parse-more-expression
+	     
+               (parse-term
+                (c)
+                (msg "parse-term; c = ?%c" c)
+                (cond ((char-equal c ?\()
+                       ;; Beginning of expression.
+                       (parse-parenthesized-expression c))
+                    
+                      ((and (cl-find c "DONSKILT")
+                            (char-equal (char-after (1+ (point))) ?\'))
+                       ;; We have an attribute.
+                       (msg "attribute with c = ?%c" c)
+                       (advance)
+                       (advance) ; Now we are on the first character after the ?'.
+                       (msg "attribute first c = ?%c" (following-char))
+                       (parse-term (following-char)))
+                    
+                      ((and (cl-find c "XBCG")
+                            (char-equal (char-after (1+ (point))) ?\'))
+                       ;; We have a "self-defining term".
+                       (msg "self-def with c = ?%c" c)
+                       (advance)
+                       ;; Now we parse a string.
+                       (parse-string (following-char)))
+                    
+                      ((char-equal c ?\*) ; Special case for location
+                                        ; counter.
+                       (advance)
+                       t)
+                    
+                      ((char-equal c ?\=)
+                       ;; A literal
+                       (msg "literal with c = ?%c" c)
+                       (advance)
+                       (parse-literal-or-symbol (following-char))
+                       (parse-expression (following-char)))
+                     
+                      ((char-equal c ?\')
+                       (parse-string c))
+                    
                       (t
-	               (prog1 (parse-more-expression fc)
-                         (message "ASMIBM PARSE OPERANDS: parse-expression returning"))
+                       (msg "calling parse-literal-or-symbol")
+                       (parse-literal-or-symbol c))
+                      )
+                )                       ; parse-term
+
+               (parse-literal-or-symbol
+                (c)
+                (msg "parse-literal-or-symbol; c = ?%c" c)
+                (cond ((is-literal-or-symbol-following-char c)
+                       (msg "parse-literal-or-symbol; terminating ?%c"
+                            (following-char))
+                       t)
+                      (t
+                       (advance)
+                       (parse-literal-or-symbol (following-char))
                        )
-                      ))
-	      )                         ; parse-expression
-		    
-	     (parse-more-expression
-	      (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-more-expression; c = ?%c" c)
-	      (cond ((char-equal c ?\))
-		     ;; Closing of expression
-		     (advance)
-		     t)
-		    ((char-equal c ?\()
-		     (parse-parenthesized-expression c))
-		    ((cl-find c "=+-*/")
-		     (advance)
-		     (parse-expression (following-char)))
-		    ((char-equal c ?\')
-		     (parse-string c)
-		     (parse-more-expression (following-char)))
-		    ((char-equal c ?\,)
-                     ;; (parse-expression)
-                     (message "ASMIBM PARSE OPERANDS: parse-more-expression; am I here; c = ?%c"
-                              c)
-		     t)
-		    ((equal (char-syntax c) ?\ )
-		     t)
-		    ((equal (char-syntax c) ?\n)
-		     t)
-		    )
-	      )                         ; parse-more-expression
-	     
-             (parse-term
-              (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-term; c = ?%c" c)
-	      (cond ((char-equal c ?\()
-		     ;; Beginning of expression.
-		     (parse-parenthesized-expression c)
-		     )
-		    ((and (cl-find c "DONSKILT")
-			  (char-equal (char-after (1+ (point))) ?\'))
-		     ;; We have an attribute.
-		     (message  "ASMIBM PARSE OPERANDS: attribute with c = ?%c"
-			       c)
-		     (advance)
-		     (advance) ; Now we are on the first character after the ?'.
-		     (message  "ASMIBM PARSE OPERANDS: attribute first c = ?%c"
-			       (following-char))
-		     (parse-term (following-char))
-		     )
-		    ((char-equal c ?\')
-		     (parse-string c)
-		     )
-		    (t
-		     (message "ASMIBM PARSE OPERANDS: calling parse-literal-or-symbol")
-		     (parse-literal-or-symbol c)
-                     ;; (parse-more-term (following-char))
-                     (prog1 (parse-more-expression (following-char))
-                       (message "ASMIBM PARSE OPERANDS: called parse-more-expression; following char = ?%c"
-                                (following-char))
-                       )
-		     )
-                    )
-	      )                         ; parse-term
+                      )
+                )                       ; parse-literal-or-symbol
 
-             (parse-more-term
-              (c)
-              (message "ASMIBM PARSE OPERANDS: parse-more-term; c = ?%c" c)
-              (cond ((or (equal (char-syntax c) ?\ ) ; End of term.
-                         (char-equal c ?\,))
-                     (message "ASMIBM PARSE OPERANDS: end of term")
-                     t)
-                    (t
-                     (prog1 (parse-term c)
-                       (message "ASMIBM PARSE OPERANDS: called parse-term; fc = ?%c"
-                                (following-char)))
-                     )
-                    )
-              )                         ; parse-more-term
-		    
-	     (parse-literal-or-symbol
-	      (c)
-              (message "ASMIBM PARSE OPERANDS: parse-literal-or-symbol; c = ?%c" c)
-	      (cond ((is-literal-or-symbol-following-char c)
-		     t)
-		    (t
-		     (advance)
-		     (parse-literal-or-symbol (following-char))
-		     )
-                    )
-	      )                         ; parse-literal-or-symbol
+               (parse-parenthesized-expression
+                (c)
+                (msg "parse-parenthesized-expression c = ?%c" c)
+                (cl-assert (char-equal c ?\())
 
-	     (parse-parenthesized-expression
-	      (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-parenthesized-expression c = ?%c" c)
-              (cl-assert (char-equal c ?\())
+                (advance)
+                (parse-expression (following-char))
+                (prog1 (parse-more-parenthesized-expression (following-char))
 
-              (advance)
-	      (parse-expression (following-char))
-	      (prog1 (parse-more-parenthesized-expression (following-char))
-
-                (cl-assert (char-equal (char-before) ?\))
-                           ;; t
-                           ;; "char before is %c." (following-char)
-                           )
+                  (cl-assert (char-equal (char-before) ?\))
+                             ;; t
+                             ;; "char before is %c." (following-char)
+                             )
+                  )
                 )
-	      )
 
-	     (parse-more-parenthesized-expression
-	      (c)
-	      (message "ASMIBM PARSE OPERANDS: parse-more-parenthesized-expression c = ?%c" c)
-	      (cond ((char-equal c ?\))
-		     ;; Closing of epression
-		     (advance)
-		     t)
-		    ((char-equal c ?\()
-		     (parse-parenthesized-expression c))
-		    ((cl-find c "=+-*/")
-		     (advance)
-		     (parse-expression c))
-		    ((char-equal c ?\')
-		     (parse-string c)
-		     (parse-more-expression (following-char)))
-		    ((char-equal c ?\,)
-                     (parse-expression (following-char))
-		     t)
-		    ((equal (char-syntax c) ?\ )
-		     ;; Here we differ as we can have the 'A'
-		     ;; macros.
-		     (let ((next-char
-			    (re-search-forward "[:blank:]"
-					       limit t))
-			   )
-		       (parse-literal-or-symbol (following-char))
-		       ;; Really a AND, OR, XOR...
+               (parse-more-parenthesized-expression
+                (c)
+                (msg "parse-more-parenthesized-expression c = ?%c" c)
+                (cond ((char-equal c ?\))
+                       ;; Closing of epression
+                       (msg "parse-more-parenthesized-expression; closing c = ?%c"
+                            c)
+                       (advance)
+                       t)
+                    
+                      ((char-equal c ?\()
+                       (parse-parenthesized-expression c))
+                    
+                      ((cl-find c "=+-*/")
+                       (advance)
+                       (parse-expression c))
+                    
+                      ((char-equal c ?\')
+                       (parse-string c)
+                       (parse-more-parenthesized-expression (following-char)))
+                    
+                      ((is-comma c)
+                       ;; Contrary to parse-more-expression here we are
+                       ;; in an "argument list", we must advance.
+                       ;; parse-more-expression would return and let the
+                       ;; operands parsing take over.
+                       (advance)
+                       (parse-expression (following-char))                     
+                       (parse-more-parenthesized-expression (following-char))
+                       t)
+                    
+                      ((is-space c)
+                       ;; Here we differ as we can have the 'A..'
+                       ;; macros.
+                     
+                       (skip-syntax-forward " " limit)
+                       (parse-literal-or-symbol (following-char))
+                       ;; Really a AND, OR, XOR...
 
-		       (parse-more-parenthesized-expression (following-char))
-		       ))
-		    ((equal (char-syntax c) ?\n)
-		     t)
+                       (parse-more-parenthesized-expression (following-char))
+                       )
+                    
+                      ((equal (char-syntax c) ?\n)
+                       t)
 
-		    (t                  ; Other char
-		     (advance)
-		     (parse-expression (following-char))
-		     )
-		    )
-	      )                         ; parse-more-parenthesized-expression
+                      (t                ; Other char
+                       (msg "parse-more-parenthesized-expression; ooops!")
+                       ;; (advance)
+                       (parse-expression (following-char))
+                       )
+                      )
+                )                ; parse-more-parenthesized-expression
 		    
-	     (is-literal-or-symbol-following-char
-	      (c)
-	      (cond ((char-equal c ?\))
-		     ;; Closing parenthesized expression.
-		     t)
-		    ((char-equal c ?\()
-		     ;; Opening of parenthesized expression,
-		     ;; possibly an argument list.
-		     t)
-		    ((cl-find c "+-*/")
-		     ;; Operator in expression.
-		     t)
-		    ((char-equal c ?\')
-		     ;; Beginning of string?
-                     t
-		     )
-		    ((char-equal c ?\,)
-		     ;; End of operand?
-		     t)
-		    ((equal (char-syntax c) ?\ )
-		     t)
-		    ((equal (char-syntax c) ?\n)
-		     t)
-		    (t nil)
-		    )
-	      )                         ; is-literal-or-symbol-following-char
+               (is-literal-or-symbol-following-char
+                (c)
+                (cond ((char-equal c ?\))
+                       ;; Closing parenthesized expression.
+                       t)
+                      ((char-equal c ?\()
+                       ;; Opening of parenthesized expression,
+                       ;; possibly an argument list.
+                       t)
+                      ((cl-find c "+-*/")
+                       ;; Operator in expression.
+                       t)
+                      ((char-equal c ?\')
+                       ;; Beginning of string?
+                       t
+                       )
+                      ((is-comma c)
+                       ;; End of expression/operand?
+                       t)
+                      ((is-space c)
+                       t)
+                      ((equal (char-syntax c) ?\n)
+                       t)
+                      (t nil)
+                      )
+                )                ; is-literal-or-symbol-following-char
 
-	     (start-parsing
-	      ()
-	      (message "\n\nASMIBM PARSE OPERANDS: start-parsing (pos = %d lep = %d)."
-                       operand-pos
-                       (line-end-position))
-              (when (and operand-pos
-			 (< operand-pos limit)
-			 (< operand-pos (line-end-position)))
-		(let ((c (following-char)))
-	          (parse-operands c)))
-              )
-	     )			; labels functions.
+               (start-parsing
+                ()
+                (message "\n\nASMIBM PARSE OPERANDS: start-parsing (pos = %d lep = %d)."
+                         operand-pos
+                         (line-end-position))
+                (when (and operand-pos
+                           (< operand-pos limit)
+                           (< operand-pos (line-end-position)))
+                  (let ((c (following-char)))
+                    (parse-operands c)))
+                )
+               )			; labels functions.
 	  
-	  (message "ASMIBM PARSE OPERANDS: in loop with operand-pos = %s, eol = %s"
-	   	   operand-pos
-	   	   (line-end-position))
+            (msg "in loop with operand-pos = %s, eol = %s"
+                 operand-pos
+                 (line-end-position))
 
-	  (start-parsing)
-	  )				; cl-labels...
-	)				; let*...
-    ;; condition-case catchers...
-    (search-failed (message "ASMIBM PARSE OPERANDS: search failed.") nil)
-    ))
+            (start-parsing)
+            )				; cl-labels...
+          )				; let*...
+      ;; condition-case catchers...
+      (search-failed (msg "search failed.") nil)
+      (error (msg "parsing failed.") nil)
+      )))
 
 
 ;; asmibm-mode--parse-statement
