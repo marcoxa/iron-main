@@ -458,11 +458,20 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
                 (char-equal c ?\,)
                 )                       ; is-comma
 
-                                        ; msg
+	       (is-term-character
+		(c)
+                (or (equal (char-syntax c) ?\W) ; Word constituent
+                    (equal (char-syntax c) ?\_) ; Symbol constituent;
+                                        ; check later that it contains
+                                        ; all characters needed.
+                    (char-equal c ?\.)
+                    (char-equal c ?\#))
+		)			; is-term-character
+
 
                (finish-operands
                 (c)
-                (message "XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                ;; (message "XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
                 (msg "finishing operands.")
 		     
                 ;; We get here in one case.
@@ -610,6 +619,10 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
                        (msg "parse-more-expressions; am I here; c = ?%c" c)
                        ;; (retreat)
                        t)
+
+		      ((is-term-character c)
+                       (msg "parse-more-expressions; parse-expressions; c = ?%c" c)
+		       (parse-expressions c))
                     
                       ((is-space c)
                        ;; (retreat)
