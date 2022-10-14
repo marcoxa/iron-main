@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20210405.1
+;; Version: 20221014.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -57,7 +57,8 @@
 
 (define-minor-mode iron-main-mode
   "A minor mode to edit files and interact with IBM MVS or z/OS."
-  :initial-value nil
+
+  :init-value nil
   :lighter "//IRON-MAIN"
 
   :group 'iron-main
@@ -78,8 +79,8 @@
     ;; May not be loaded in older versions of Emacs.
     
     (display-fill-column-indicator-mode)
-    (setq-local display-fill-column-indicator t
-		display-fill-column-indicator-column 72))
+    (setq-local display-fill-column-indicator t)
+    (setq-local display-fill-column-indicator-column 72))
 
   ;; Always start ruler.
   ;; Unless we are in an older EMacs which may break because it is

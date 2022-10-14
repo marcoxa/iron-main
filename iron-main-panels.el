@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20210415.1
+;; Version: 20221014.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -200,7 +200,9 @@ See Also:
 
 
 (defun iron-main-panels--find-command (cmd commands-alist)
-  (assoc cmd commands-alist 'string=))
+  ;; (assoc cmd commands-alist 'string=)
+  (assoc cmd commands-alist)		; Older Emacsen do not accept the third arg.
+  )
 
 
 (defun iron-main-panels--command-field ()
@@ -282,8 +284,8 @@ You an use the function key `F3' (i.e., `PF3') or the [Qq] keys to
 exit a panel.  Exiting the top panel will exit the IRON MAIN
 interface."
 
-  (setq-local iron-main-panels--in-panel t
-	      iron-main-panels--back nil)
+  (setq-local iron-main-panels--in-panel t)
+  (setq-local iron-main-panels--back nil)
 
   (use-local-map iron-main-panels-mode-keymap)
   )
@@ -323,7 +325,7 @@ interface."
 
   ;; The next one is a kludge to position the message on the "last"
   ;; window without resorting (as I probably should) to more
-  ;; sophisticated Emacs techniques involving minibubber-less windows
+  ;; sophisticated Emacs techniques involving minibuffer-less windows
   ;; etc.
 
   (let ((wh (window-total-height))
@@ -332,7 +334,7 @@ interface."
 	(lp-window-end (line-number-at-pos (window-end)))
 	)
     (cond ((>= lc wh)
-	   (move-to-window-line -1)	; Lst visible line.
+	   (move-to-window-line -1)	; Last visible line.
 	   )
 	  ((< lc wh)
 	   ;; Kludgy part: pad the buffer with newlines.
@@ -429,12 +431,12 @@ file system(s) that Emacs has direct access to; most notably, the
   (setq-local iron-main-panels--session session)
   
   (setq-local iron-main-machine
-	      (iron-main-session-machine session)
-	      iron-main-os-flavor
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
-  (setq-local iron-main-panels--tag "Hercules datasets"
-	      iron-main-panels--cmds iron-main-panels--hercules-dsfs-commands)
+  (setq-local iron-main-panels--tag "Hercules datasets")
+  (setq-local iron-main-panels--cmds iron-main-panels--hercules-dsfs-commands)
   
   (iron-main-panels--title-field
    "Dataset and file system handling panel")
@@ -480,8 +482,8 @@ file system(s) that Emacs has direct access to; most notably, the
 
   ;; Init buffer local variables.
   
-  (setq-local iron-main-panels--tag "Allocation panel"
-	      iron-main-panels--cmds ())
+  (setq-local iron-main-panels--tag "Allocation panel")
+  (setq-local iron-main-panels--cmds ())
 
   
   ;; Let's start!
@@ -957,11 +959,12 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 
   ;; Init buffer local variables.
   
-  (setq-local iron-main-machine machine
-	      iron-main-os-flavor os-flavor
-	      iron-main-panels--back from-buffer
-	      iron-main-panels--tag "Top"
-	      iron-main-panels--cmds iron-main-panels--hercules-top-commands)
+  (setq-local iron-main-machine machine)
+  (setq-local iron-main-os-flavor os-flavor)
+  (setq-local iron-main-panels--back from-buffer)
+  (setq-local iron-main-panels--tag "Top")
+  (setq-local iron-main-panels--cmds
+	      iron-main-panels--hercules-top-commands)
   
   (when (iron-main-running-machine "Hercules")
     ;; Trying to get the PID.
@@ -972,8 +975,8 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 	  (session
 	   (iron-main-session-start 'iron-main-hercules-session))
 	  )
-      (setq-local iron-main-hercules-pid pid
-		  iron-main-panels--session session)
+      (setq-local iron-main-hercules-pid pid)
+      (setq-local iron-main-panels--session session)
 
       (if pid
 	  (setf (iron-main-hs-pid session)
@@ -1223,8 +1226,8 @@ if needed."
   (setq-local iron-main-panels--session session)
   
   (setq-local iron-main-machine
-	      (iron-main-session-machine session)
-	      iron-main-os-flavor
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
   (setq-local iron-main-panels--tag "Hercules system")
@@ -1359,8 +1362,8 @@ if needed."
   (setq-local iron-main-panels--session session)
   
   (setq-local iron-main-machine
-	      (iron-main-session-machine session)
-	      iron-main-os-flavor
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
   (setq-local iron-main-panels--tag "Hercules help")
@@ -1385,11 +1388,11 @@ if needed."
 		  (lambda (w &rest ignore)
 		    (ignore ignore)
 		    (if (string-equal "" (widget-value w))
-			(message "IMHS00I: Getting help for '%s' (%s)."
+			(message "IMHS00I: Available commands... (%s)"
+			       iron-main-panels--help-ins-pt)
+		      (message "IMHS00I: Getting help for '%s' (%s)."
 				 (widget-value w)
 				 iron-main-panels--help-ins-pt)
-		      (message "IMHS00I: Available commands... (%s)"
-			       iron-main-panels--help-ins-pt)
 		      )
 		    (let ((helpstring
 			    (iron-main-hercules-help (widget-value w)))
@@ -1495,10 +1498,8 @@ If PANEL-FUNCTION is NIL, this is a no-op"
 
     (message ">>> Panel invoked; setting back to %s" from)
     
-    (setq-local iron-main-panels--back
-		from
-
-		iron-main-panels--session
+    (setq-local iron-main-panels--back from)
+    (setq-local iron-main-panels--session
 		(iron-main-panels--get-session from))
     (list (current-buffer) from))
   )
