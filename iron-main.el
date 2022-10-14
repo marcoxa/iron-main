@@ -46,7 +46,7 @@
   "The location of the IRON MAIN library \"tests\" folder.")
 
 
-(defvar iron-main--do-recompile-dir nil
+(defvar iron-main--do-recompile-dir t
   "Do we compile the `iron-main' folder?
 
 Internal variable controlling whether the loading of the package
