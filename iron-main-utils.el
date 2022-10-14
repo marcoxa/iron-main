@@ -118,7 +118,7 @@ More tests will be added in the future."
 
 (defun iron-main-check-dsname (ds)
   "Check the constraints of the name of DS (the 'DSNAME')."
-  (declare (type string ds))
+  ;; (declare (type string ds))
   (let ((dsname (cl-first (split-string ds "'" t " +")))
 	;; The above is a kludge to remove the quotes.
 	)
