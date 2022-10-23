@@ -93,8 +93,8 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
     )
   "The IRON MAIN Panel mode key map.
 
-The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
-'PF3'), 'q' and 'Q' exit the current panel.")
+The key map inherits from `widget-keymap'.  The key '<f3>' (that is,
+'PF3') exits the current panel.")
 
 
 ;;; Buffer local variables.
@@ -102,7 +102,7 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 ;; Navigation.
 
 (defvar-local iron-main-panels--back nil
-  "Local panel variable set by the 'invoking' panel."
+  "Local panel variable set by the `invoking' panel."
   ;; Pretty crude for the time being.
   ;; This just acts as a stack.  Whever a panel is "closed", the
   ;; buffer is killed and the content of this variable, a buffer, if
