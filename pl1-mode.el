@@ -468,18 +468,18 @@ Directives are actually akin to the 'commands' or 'verbs' defined by PL/I."
 
 (defvar pl1-imenu-generic-expression
   '(("Packages"
-     "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +PACKAGE" 2)
+     "^ *\\([A-Za-z_][A-Za-z0-9_#]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +PACKAGE" 2)
     ;; The above may be incorrect, as PLI/I LR seems to require a
     ;; colon after the condition.
     
     ("Procedures"
-     "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +PROC" 2)
+     "^ *\\([A-Za-z_][A-Za-z0-9_#]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +PROC" 2)
     ("Entries"
-     "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +ENTRY" 2)
+     "^ *\\([A-Za-z_][A-Za-z0-9_#]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +ENTRY" 2)
     ("Formats"
-     "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +FORMAT" 2)
+     "^ *\\([A-Za-z_][A-Za-z0-9_#]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +FORMAT" 2)
     ("Blocks"
-     "^ *\\([A-Za-z_][A-Za-z0-9_]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +BEGIN" 2)
+     "^ *\\([A-Za-z_][A-Za-z0-9_#]* +\\)*\\([A-Za-z_][A-Za-z0-9_]*\\): +BEGIN" 2)
     )
   "The PL/I Imenu regular expressions.")
 
