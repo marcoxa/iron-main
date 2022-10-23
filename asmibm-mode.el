@@ -851,24 +851,30 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
           (message "ASMIBM IS-CONT: moved to column %s." c71)
 	  (cond ((< c71 71)		; Line shortes than 72.
 		 (message "\nASMIBM IS-CONT: card is only %s long." c71)
-		 nil
+		 (cl-return-from asmibm-mode--continuation-line-p
+                   (progn (message "ASMIBM IS-CONT: returning nil.") nil))
 		 )
 		((and (= c71 71)
 		      (= (char-syntax (char-after)) ?\ ))
 		 ;; Nothing on column 72.
 		 ;; Do nothing.
 		 (message "\nASMIBM IS-CONT: card is 71 or more long, but C72 is a blank.")
-		 nil
+		 (cl-return-from asmibm-mode--continuation-line-p
+                   (progn (message "ASMIBM IS-CONT: returning nil.") nil))
 		 )
 		((and (= c71 71)                                ; Paranoid.
 		      (not (= (char-syntax (char-after)) ?\ ))) ; Paranoid.
 		 ;;
 		 (message "\nASMIBM IS-CONT: card is 71 or more long, and C72 is ?\%c."
                           (char-after))
-		 t
+		 (cl-return-from asmibm-mode--continuation-line-p
+                   (progn (message "ASMIBM IS-CONT: returning t.") t))
 		 )
 		))
-	))))
+	)
+      (message "ASMIBM IS-CONT: returning nil.")
+      nil
+      )))
 
 
 (defvar asmibm-mode--bad-cont-line-regexp
