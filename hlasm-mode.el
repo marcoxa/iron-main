@@ -1485,7 +1485,8 @@ does not have a continuation mark in column 72."
      (if next-card-pos
          (prog1
             
-             (beginning-of-line)
+             ;; (beginning-of-line)  ; This returns NIL!!
+             (forward-line 0)
 
            ;; Here we need to start the actual processing of the
            ;; line/card.
