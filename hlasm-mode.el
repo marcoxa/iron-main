@@ -1763,7 +1763,7 @@ Now used only for invalid continuation lines."
 ;;   "The HLASM IBM Imenu regular expressions.")
 
 (defvar hlasm-mode--imenu-generic-expression
-  '((nil "^\\([[:alpha:]][[:alnum:]@$#_]*\\)" 1) ; Also avoid JCL
+  `((nil ,hlasm-mode--names 1) ; Also avoid JCL
     )
   "The HLASM IBM Imenu regular expressions.")
 
