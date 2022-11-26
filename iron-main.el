@@ -31,14 +31,14 @@
 ;; SDL/Hyperion: <https://github.com/SDL-Hercules-390>
 ;; TK4-: http://wotho.ethz.ch/tk4-/
 ;; Jay Moseley's site: http://www.jaymoseley.com/hercules/ (and
-;;                     other useful things).
+;; other useful things).
 
 
 ;;; Code:
 
 ;;;; IRON MAIN Mode Setup.
 
-(defvar iron-main-path (file-name-directory load-file-name)
+(defvar iron-main-path (file-name-directory (or load-file-name "."))
   "The location the IRON MAIN library is loaded from.")
 
 (defvar iron-main-path-tests
@@ -46,7 +46,7 @@
   "The location of the IRON MAIN library \"tests\" folder.")
 
 
-(defvar iron-main--do-recompile-dir t
+(defvar iron-main--do-recompile-dir nil
   "Do we compile the `iron-main' folder?
 
 Internal variable controlling whether the loading of the package
@@ -74,10 +74,15 @@ should cause the (re)compilation fo the folder.")
 
 ;; Language mode files.
 
-(load (expand-file-name "asmibm-mode" iron-main-path))
-(load (expand-file-name "pl1-mode" iron-main-path))
 (load (expand-file-name "jcl-mode" iron-main-path))
 (load (expand-file-name "jcl-poly-mode" iron-main-path))
+
+;; (load (expand-file-name "asmibm-mode" iron-main-path))
+(load (expand-file-name "hlasm-mode" iron-main-path))
+
+(load (expand-file-name "pl1-mode" iron-main-path))
+
+
 
 
 ;;;; Epilogue
