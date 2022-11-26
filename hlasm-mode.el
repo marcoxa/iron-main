@@ -1409,10 +1409,15 @@ does not have a continuation mark in column 72."
              
                ;; ... but, just in case, look for next instruction;
                ;; recursively.  Of course, this would mean that we are
-               ;; checking for boieng a continuation line some times too
+               ;; checking for being a continuation line some times too
                ;; many, but at least the intent of the code is clear.
 	     
-               (when (hlasm-mode--card-continues-p limit *hlasm-mode--debug*)
+               ;; (when (hlasm-mode--card-continues-p limit *hlasm-mode--debug*)
+               ;;   (forward-line)
+               ;;   (hlasm-mode--card-instruction limit *hlasm-mode--debug*)
+               ;;   )
+
+               (progn                   ; Do it anyway.  Let's see later...
                  (forward-line)
                  (hlasm-mode--card-instruction limit *hlasm-mode--debug*)
                  )
