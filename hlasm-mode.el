@@ -21,6 +21,9 @@
 
 ;;; Code:
 
+(require 'font-lock)			; Just to be explicit
+
+
 ;;;; HLASM IBM Mode Setup.
 
 (defgroup hlasm nil
@@ -202,7 +205,21 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;;
 ;; I know.  This is very kludgy.
 
-(defvar *hlasm-mode--debug* t)
+
+;; *hlasm-mode--debug*
+;;
+;; More kludges in the spirit of "never underestimate the debugging
+;; power of printf".
+
+(defvar *hlasm-mode--debug* nil
+  "Controls whether to print verbose, tracing, information with `message'.
+
+If T the local function created by the macro `hlasm-mode--messaging'
+calls `message' with information regarding the function being
+executed.
+
+If NIL no message is printed.
+")
 
 
 ;; hlasm-mode-messaging
@@ -439,7 +456,7 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;; Notes:
 ;;
 ;; The parser is stupid and does not span lines.  That is, if you open
-;; a parenthesis you must close it on the same line.
+;; a parenthesis you'd better close it on the same line.
 
 (cl-defun hlasm-mode--parse-operands (&optional
                                        (limit (line-end-position))
@@ -961,6 +978,24 @@ See, e.g.: https://www.ibm.com/docs/en/zos/2.1.0?topic=terms-other-attribute-ref
 ;;         ))))
 
 
+(cl-defun hlasm-mode--continued-card-anchor-function (&optional
+                                                      limit
+                                                      (*hlasm-mode--debug* t))
+  (interactive)
+  (hlasm-mode--messaging
+   "HLASM CONT ANCHOR: "
+
+   (if (hlasm-mode--card-continues-p limit *hlasm-mode--debug*)
+       (progn
+         (msg "on a continuation line; moving to column 72")
+         (move-to-column 72))
+     
+     (prog1 (re-search-forward hlasm-mode--continued-card limit t)
+       (msg "now on line %s" (line-number-at-pos)))
+     )))
+
+
+
 (cl-defun hlasm-mode--continuation-card-p (&optional limit (*hlasm-mode--debug* t))
   "Returns T if the previous line has a continuation mark in column 72.
 
@@ -1086,7 +1121,7 @@ does not have a continuation mark in column 72."
            (cond ((hlasm-mode--good-continuation-card-p limit
                                                         *hlasm-mode--debug*)
                   (skip-chars-forward "[:space:]" limit)
-                  (hlasm-mode--parse-operands limit *hlasm-mode--debug*)
+                  (hlasm-mode--parse-operands limit nil) ; *hlasm-mode--debug*)
                   (prog1 (re-search-forward ".*$")
                     (when current-card-cont-p
                       ;; Move back to BOL to ensure that the next round
@@ -1115,7 +1150,7 @@ does not have a continuation mark in column 72."
 	      (hlasm-mode--good-continuation-card-p limit
 						  *hlasm-mode--debug*))
      (skip-chars-forward "[:space:]" limit)
-     (hlasm-mode--parse-operands limit *hlasm-mode--debug*)
+     (hlasm-mode--parse-operands limit nil) ; *hlasm-mode--debug*)
      (re-search-forward ".*$")
      )))
 
@@ -1224,7 +1259,7 @@ does not have a continuation mark in column 72."
 	      )
 	  
 	     ((= c16 15)
-	      (hlasm-mode--parse-operands limit)
+	      (hlasm-mode--parse-operands limit nil)
 	      (skip-chars-forward "[:space:]" limit)
               (msg "returning match.")
 	      (cl-return-from hlasm-mode--continuation-card-remark
@@ -1254,7 +1289,8 @@ does not have a continuation mark in column 72."
    "HLASM FALLBACK CONT CARD REMARK: "
     
    (assert (or should-be-cont-line
-	       (hlasm-mode--continuation-card-p limit *hlasm-debug*)))
+	       (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
+               ))
    ;; `assert' above is paranoid.
    ;; Also, I know that I am on a good line.
      
@@ -1268,7 +1304,7 @@ does not have a continuation mark in column 72."
    
    (beginning-of-line)
    (let ((operands-start (skip-chars-forward "[:space:]" limit)))
-     (hlasm-mode--parse-operands limit *hlasm-mode--debug*)
+     (hlasm-mode--parse-operands limit nil) ; *hlasm-mode--debug*)
 
      ;; Now move forward, but do not go past the eol.
      
@@ -1437,7 +1473,7 @@ does not have a continuation mark in column 72."
 
    (if (<= (point) limit)
        (if (hlasm-mode--ensure-card-position limit *hlasm-mode--debug*)
-           (if (hlasm-mode--continuation-card-p limit *hlasm-mode--debug*)
+           (if (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
                ;; Do nothing
                ;; (progn
                ;;   ;; ...but zero the match-data just in case.
@@ -1573,7 +1609,7 @@ does not have a continuation mark in column 72."
 	   (progn
 	     (msg "on line %s" (line-number-at-pos))
           
-	     (if (hlasm-mode--continuation-card-p limit *hlasm-mode--debug*)
+	     (if (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
 		 ;; Find a remark on a continuation line; we assume things
 		 ;; are kosher here; that is, we are not on a bad
 		 ;; continuation line.
@@ -1592,7 +1628,7 @@ does not have a continuation mark in column 72."
 		   (msg "\"%s\"" (match-string 0))
 		   (msg "after instruction.")
 		   (skip-chars-forward "[:blank:]" limit)
-		   (hlasm-mode--parse-operands limit)
+		   (hlasm-mode--parse-operands limit nil) ; *hlasm-mode--debug*)
 		   (cl-return-from hlasm-mode--card-remarks
 		     (prog1 (re-search-forward ".*$" limit t)
 		       (msg "exiting with line = %s"
@@ -1605,6 +1641,103 @@ does not have a continuation mark in column 72."
      (search-failed (msg "search failed.") nil)
      )
    ))
+
+
+;; Multiline font lock.
+;; --------------------
+;;
+;; Essentially, we need to be able to fontify lines two at a time in
+;; order to ensure that the continuation line machinery kicks in.
+;; To do so, I try `font-lock-extend-region-functions': the function
+;; `hlasm-mode--font-lock-extend-region' does that.
+
+;; Avoid compiler warnings because of these Font Lock variables.
+
+(defvar font-lock-beg)
+(defvar font-lock-end)
+
+;; hlasm-mode--font-lock--extend-region
+
+(cl-defun hlasm-mode--font-lock-extend-region ()
+  (interactive)				; Just for debugging.
+
+  (let ((limit font-lock-end))
+    (hlasm-mode--messaging
+     "HLASM EXTEND REGION: "
+
+     (save-excursion
+
+       ;; `font-lock-beg' and `font-lock-end' are dynamic
+       ;; varriables handled by Font Lock.
+       ;;
+       ;; Notes:
+       ;; Code is hairy just for debugging purposes.  Come back later
+       ;; to streamline it.
+
+       (when (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
+
+         ;; Extend only if we are on a continuation line.
+
+         (let ((current-line (line-number-at-pos))
+               (n-line (forward-line -1))
+               )
+           (cl-case n-line
+             (-1
+              (msg "n-line = %s on first line; current-line %"
+                   n-line
+                   current-line))
+             (0
+              (msg "n-line = %s, current line = %s, from-line %s (%s %s)."
+                   n-line
+                   (line-number-at-pos)
+                   current-line
+                   (line-beginning-position)
+                   (line-end-position)))
+             )
+
+           (when (zerop n-line)
+             ;; We moved up one line
+             (setq font-lock-beg (point)))
+           )))
+     )))
+
+
+
+(cl-defun hlasm-mode--font-lock-change-extend-region (beg end len)
+  (let ((limit end))
+    (hlasm-mode--messaging
+     "HLASM CHANGE EXTEND REGION: "
+
+     (save-excursion
+
+       (when (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
+
+         ;; `font-lock-beg' and `font-lock-end' are dynamic
+         ;; varriables handled by Font Lock.
+         ;;
+         ;; Notes:
+         ;; Code is hairy just for debugging purposes.  Come back later
+         ;; to streamline it.
+
+         (let ((n-line (forward-line -1)))
+
+           ;; We are on a continuation line.
+           ;; ... but let's be paranoid.
+
+           (assert (zerop n-line))
+           
+           (msg "n-line = %s, current line = %s (%s %s)."
+                n-line
+                (line-number-at-pos)
+                (line-beginning-position)
+                (line-end-position))
+
+           ;; We moved up one line.
+           
+           (cons (point) end)
+           ))
+       )))
+  )
 
 
 ;; HLASM IBM faces.
@@ -1720,7 +1853,8 @@ Now used only for invalid continuation lines."
 
 (defvar hlasm-mode--font-lock-keywords
   `(
-    (,hlasm-mode--continued-card        ; Anchor.
+    (hlasm-mode--continued-card-anchor-function ; Anchor.
+     ;; ,hlasm-mode--continued-card        ; Anchor.
 
      ;; Good continuation line after anchor.
 
@@ -1734,6 +1868,9 @@ Now used only for invalid continuation lines."
      (hlasm-mode--bad-continuation-card-flag
       (beginning-of-line) ; (forward-line) ; Previous anchored match moved the line.
       nil
+      ;; (beginning-of-line)               ; After we match, we need to
+                                        ; ensure that further calls of
+                                        ; the anchor have a chance 
       (0  ,hlasm-mode-invalid-face))
      )
     
@@ -1824,9 +1961,22 @@ Not all features of HLASM are currently supported."
 
   :syntax-table hlasm-mode--syntax-table
 
+  (setq-default indent-tabs-mode nil)   ; Avoid spurious tabs.
+
   (setq-local font-lock-defaults hlasm-mode--font-lock-defaults)
 
-  (setq-default indent-tabs-mode nil)   ; Avoid spurious tabs.
+  ;; Not working
+  ;; Called too many times.
+  
+  ;; (add-hook 'font-lock-extend-region-functions
+  ;;           'hlasm-mode--font-lock-extend-region
+  ;;           t)
+
+  ;; Try to use the change hooks.
+
+  (setq-local font-lock-extend-after-change-region-function
+              'hlasm-mode--font-lock-change-extend-region)
+
 
   (face-remap-add-relative hlasm-mode-operations-face
                            :weight 'bold
