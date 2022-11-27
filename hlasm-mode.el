@@ -1702,6 +1702,15 @@ does not have a continuation mark in column 72."
      )))
 
 
+;; hlasm-mode--font-lock-change-extend-region
+;;
+;; Good start.  But I need to fix the issues when a line (card)
+;; changes it status as continuation card or not.
+;;
+;; If the line changes status I should probably extend the region also
+;; "below".
+;;
+;; Come back later to fix this.
 
 (cl-defun hlasm-mode--font-lock-change-extend-region (beg end len)
   (let ((limit end))
