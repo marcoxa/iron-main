@@ -1240,6 +1240,44 @@ does not have a continuation mark in column 72."
    ))
 
 
+;; hlasm-mode--fallback-cont-card-remark
+;;
+;; Function called by `hlasm-mode--continuation-card-remarks', which
+;; is called *after* the fontification of continuation lines (see
+;;`hlasm-mode--font-lock-keywords' below)
+
+(cl-defun hlasm-mode--fallback-cont-card-remark (&optional
+						 (limit (point-max))
+						 should-be-cont-line
+						 (*hlasm-mode--debug* t))
+  (hlasm-mode--messaging
+   "HLASM FALLBACK CONT CARD REMARK: "
+    
+   (assert (or should-be-cont-line
+	       (hlasm-mode--continuation-card-p limit *hlasm-debug*)))
+   ;; `assert' above is paranoid.
+   ;; Also, I know that I am on a good line.
+     
+   (msg "line %s is a continuation line" (line-number-at-pos))
+
+   ;; Now let's work as if we were on a good continuation line.
+   ;; Note: I can probably just avoid this function altogether in
+   ;; `hlasm-mode--continuation-card-remarks'.
+
+   (msg "faking match")
+   
+   (beginning-of-line)
+   (let ((operands-start (skip-chars-forward "[:space:]" limit)))
+     (hlasm-mode--parse-operands limit *hlasm-mode--debug*)
+
+     ;; Now move forward, but do not go past the eol.
+     
+     (skip-chars-forward "[:space:]" (line-end-position))
+     (msg "returning match.")
+     (re-search-forward ".*$" limit t)
+     )))
+
+
 ;; (cl-defun hlasm-mode--bad-continuation-card-new (&optional
 ;;                                                  (limit (point-max))
 ;; 					         should-be-cont-line
@@ -1542,7 +1580,9 @@ does not have a continuation mark in column 72."
 		 (progn
 		   (msg "card %s is a continuation card."
 			(line-number-at-pos))
-		   (hlasm-mode--continuation-card-remark limit t))
+		   ;; (hlasm-mode--continuation-card-remark limit t)
+		   (hlasm-mode--fallback-cont-card-remark limit t *hlasm-mode--debug*)
+		   )
 
 	       ;; Not on a continuation line.
 	       (let ((post-instr-point
