@@ -93,7 +93,7 @@ Most behavior is customizable in the "jcl" group.
 
 If you manually downloaded the package, you can open the
 `testsubmit.jcl` file, which just executes `IEFBR14` and
-allocates a dataset and submit it to your MVS or z/OS
+allocates a dataset, and submit it to your MVS or z/OS
 instance.
 
 
@@ -105,7 +105,7 @@ indentation, plus flagging of bad continuation lines.  It tries to be
 somewhat smart about strings, "attributed" symbols and expressions and
 comments.
 
-It is different form the "standard" Emacs assembler mode because of
+It is different from the "standard" Emacs assembler mode because of
 some syntax peculiarities that required some special treatment for
 Font Lock Mode.
 
