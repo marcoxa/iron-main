@@ -234,7 +234,10 @@ If NIL no message is printed.
   `(cl-flet ((msg
               (m &rest args)
               (when *hlasm-mode--debug*
-                (apply 'message (concat ,tag m) args))
+                (apply 'message
+                       (concat ,tag "(%s): " m)
+                       (line-number-at-pos)
+                       args))
               nil)
              )
      (message "\n")
@@ -1174,6 +1177,11 @@ does not have a continuation mark in column 72."
          (let ((current-card-cont-p
                 (hlasm-mode--card-continues-p *hlasm-mode--debug*))
                )
+           
+           (msg "now on line %s, card continues %s"
+                (line-number-at-pos)
+                current-card-cont-p)
+           
            (cond ((hlasm-mode--good-continuation-card-p limit
                                                         *hlasm-mode--debug*)
                   (msg "not a bad cont card, but let's keep going")
@@ -1288,9 +1296,9 @@ does not have a continuation mark in column 72."
   (hlasm-mode--messaging
    "HLASM FALLBACK CONT CARD REMARK: "
     
-   (assert (or should-be-cont-line
-	       (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
-               ))
+   (cl-assert (or should-be-cont-line
+	          (hlasm-mode--continuation-card-p limit nil) ; *hlasm-mode--debug*)
+                  ))
    ;; `assert' above is paranoid.
    ;; Also, I know that I am on a good line.
      
@@ -1565,7 +1573,9 @@ does not have a continuation mark in column 72."
          (prog1
             
              ;; (beginning-of-line)  ; This returns NIL!!
-             (forward-line 0)
+             (let ((p (forward-line 0)))
+               (msg "about to return %s" p)
+               (point))
 
            ;; Here we need to start the actual processing of the
            ;; line/card.
@@ -1733,7 +1743,7 @@ does not have a continuation mark in column 72."
            ;; We are on a continuation line.
            ;; ... but let's be paranoid.
 
-           (assert (zerop n-line))
+           (cl-assert (zerop n-line))
            
            (msg "n-line = %s, current line = %s (%s %s)."
                 n-line
@@ -1742,8 +1752,12 @@ does not have a continuation mark in column 72."
                 (line-end-position))
 
            ;; We moved up one line.
-           
-           (cons (point) end)
+
+           ;; Extend just one line up.
+           ;; (cons (point) end)
+
+           ;; Extend one line up and one down.
+           (cons (point) (line-end-position 3)) ; 3 because we want to move 2 down.
            ))
        )))
   )
