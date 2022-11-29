@@ -21,10 +21,9 @@ to interact with the mainframe.
 
 * **pl1-mode** (file `pl1-mode.el`): a major mode to handle PL/I code
   (see file for more information, history and credits).
-* **asmibm-mode** (file `asmibm-mode.el`): a major mode to handle IBM
-  Assemblers, at least in their barebone forms (no
-  [HLASM](https://en.wikipedia.org/wiki/IBM_High_Level_Assembler) high
-  level constructs yet).
+* **hlasm-mode** (file `hlasm-mode.el`): a major mode to handle IBM
+  Assemblers, at least in their barebone forms (with minimal support for
+  [HLASM](https://en.wikipedia.org/wiki/IBM_High_Level_Assembler).
 * **jcl-mode** (file `jcl-mode.el`): a major mode to handle IBM MVS or Z/OS
   JCL.
 * **jcl-poly-mode** (file `jcl-poly-mode.el`): a major mode to handle
@@ -98,10 +97,14 @@ allocates a dataset and submit it to your MVS or z/OS
 instance.
 
 
-## asmibm-mode
+## hlasm-mode
 
-**asmibm-mode** is a major mode to handle Assembler/IBM MVS or z/OS
-ASM IBM.  The mode just does highlighting and some minor indentation.
+**hlasm-mode** is a major mode to handle Assembler/IBM MVS or z/OS
+High Level ASM IBM.  The mode just does highlighting and some minor
+indentation, plus flagging of bad continuation lines.  It tries to be
+somewhat smart about strings, "attributed" symbols and expressions and
+comments.
+
 It is different form the "standard" Emacs assembler mode because of
 some syntax peculiarities that required some special treatment for
 Font Lock Mode.
