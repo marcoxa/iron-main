@@ -8,7 +8,7 @@ The *mainframe* is, for the time being, an IBM architecture
 *machine* (or an emulator - see below) running a variant of MVS or
 z/OS.
 
-Some motivation: as of Fall 2022 (since Fall 2020), there appeared to
+Some motivation: as of Winter 2023 (since Fall 2020), there appeared to
 be no [*Job Control Language*](https://en.wikipedia.org/wiki/Job_Control_Language) (JCL)
 mode (that is, a `jcl-mode`) floating around the Emacs Internet world.
 Probably there was no need for it.  Yet.  So it seemed to be a good
