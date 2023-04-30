@@ -125,7 +125,7 @@ These are not really 'constants', as JCL does not really have them.")
 ;; The list is incomplete.
 
 (defvar jcl-operands
-  '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD" "NOTIFY"
+  '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD" "NOTIFY" "TYPRUN"
     "PGM" "COND"
     "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR" "DELETE" "DEL"
     "VOL" "VOLUME" "SER" "SERIAL"
@@ -231,7 +231,7 @@ selects them in case of 'continuation' cards that do not have the
 
     (,(regexp-opt jcl-operators nil) . ,jcl-operators-face)
 
-    ;;These must be last.
+    ;; These must be last.
     (,jcl-card-end-comments-1 . (1 ,jcl-comment-face))
     (,jcl-card-end-comments-2 . (1 ,jcl-comment-face))
     (,jcl-comments . (0 ,jcl-comment-face t))
