@@ -9,7 +9,7 @@
 ;;
 ;; Created: April, 4th, 2021
 ;;
-;; Version: 20210405.1
+;; Version: 20230501.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -42,35 +42,42 @@
 
   (define-hostmode jcl-poly-hostmode :mode 'jcl-mode)
 
-  (define-innermode jcl-pl1-innermode
+  (define-innermode jcl-poly-pl1-innermode
     :mode 'pl1-mode
     :head-matcher "^//PL1L\\.SYSIN +DD +\\*"
     :tail-matcher "^\\(/\\*\\|//\\)"
     :head-mode 'host
     :tail-mode 'host)
 
-  (define-innermode jcl-fortran-innermode
+  (define-innermode jcl-poly-fortran-innermode
     :mode 'fortran-mode
     :head-matcher "^//FORT\\.SYSIN +DD +\\*"
     :tail-matcher "^\\(/\\*\\|//\\)"
     :head-mode 'host
     :tail-mode 'host)
 
-  (define-innermode jcl-cobol-innermode
+  (define-innermode jcl-poly-cobol-innermode
     :mode 'cobol-mode
     :head-matcher "^//COB\\.SYSIN +DD +\\*"
     :tail-matcher "^\\(/\\*\\|//\\)"
     :head-mode 'host
     :tail-mode 'host)
 
-  (define-innermode jcl-asmibm-innermode
-    :mode 'asmibm-mode
+  ;; (define-innermode jcl-poly-asmibm-innermode
+  ;;   :mode 'asmibm-mode
+  ;;   :head-matcher "^//ASM\\.SYSIN +DD +\\*"
+  ;;   :tail-matcher "^\\(/\\*\\|//\\)"
+  ;;   :head-mode 'host
+  ;;   :tail-mode 'host)
+
+  (define-innermode jcl-poly-hlasm-innermode
+    :mode 'hlasm-mode
     :head-matcher "^//ASM\\.SYSIN +DD +\\*"
     :tail-matcher "^\\(/\\*\\|//\\)"
     :head-mode 'host
     :tail-mode 'host)
 
-  (define-innermode jcl-c-innermode
+  (define-innermode jcl-poly-c-innermode
     :mode 'c-mode
     ;; The next should accomodate both JCC and GCC.
     :head-matcher "^//COMP\\(ILE\\))*\\.SYSIN +DD +\\*"
@@ -80,10 +87,13 @@
 
   (define-polymode jcl-poly-mode
     :hostmode 'jcl-poly-hostmode
-    :innermodes '(jcl-pl1-innermode
-		  jcl-fortran-innermode
-		  jcl-cobol-innermode
-		  jcl-asmibm-innermode)
+    :innermodes '(jcl-poly-pl1-innermode
+		  jcl-poly-fortran-innermode
+		  jcl-poly-cobol-innermode
+		  ;; jcl-poly-asmibm-innermode
+		  jcl-poly-hlasm-innermode
+		  jcl-poly-c-innermode
+		  )
     ))
 
 
