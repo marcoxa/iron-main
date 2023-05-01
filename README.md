@@ -60,9 +60,9 @@ The basic "grammar" of JCL is the following, "line-oriented" one:
 
 or
 
-	/*<comment>
+	//*<comment>
 
-everything starting at the `//` or `/*` and ending at the end of
+everything starting at the `//` or `//*` and ending at the end of
 line, or better at the 72nd column with whitespaces meaningful.
 Actually, we are not even talking about "lines", but we are
 talking about "cards" (as it should be).
@@ -71,7 +71,7 @@ In the following the naming just follows the above convention.
 
 The mode, for the time being, allows you to write JCL files,
 pardon, "data sets", using Emacs editing facilities, plus two
-useful facilitis.
+useful facilities.
 
 The mode defines also two useful functions to "submit" your JCL
 to a running instance of MVS or Z/OS, provided that
