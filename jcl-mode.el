@@ -34,7 +34,7 @@
 ;;
 ;; The mode, for the time being, allows you to write JCL files,
 ;; pardon, "data sets", using Emacs editing facilities, plus two
-;; useful facilitis.
+;; useful facilities.
 ;;
 ;; The mode defines also two useful functions to "submit" your JCL
 ;; to a running instance of MVS or Z/OS, provided that
@@ -85,7 +85,7 @@
 This mode is part of the IRON MAIN package."
   :group 'languages)
 
-(defcustom jcl-os-flavor "MVS 3.8j"
+(defcustom jcl-mode-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
 The values of this variable are strings starting either with 'MVS' or
@@ -103,19 +103,19 @@ that IBM release in the public domain."
 ;;; jcl-constants
 ;;; UNUSED.
 
-(defvar jcl-constants
+(defvar jcl-mode--constants
   '("//" "/*" "//*")
   "JCL card starters.
 
 These are not really 'constants', as JCL does not really have them.")
 
 
-(defvar jcl-strings
+(defvar jcl-mode--strings
   "'.*'"
   "JCL strings regular expression.")
 
 
-(defvar jcl-operations
+(defvar jcl-mode--operations
   '("JOB" "EXEC" "DD" "PROC" "PEND"
     "COMMAND" "CNTL" "ENDCNTL"
     "IF" "THEN" "ELSE" "ENDIF"
@@ -133,7 +133,7 @@ List build from the IBM publication \"MVS JCL User's Guide\" (z/OS Version 2 Rel
 ;; jcl-operands
 ;; The list is incomplete.
 
-(defvar jcl-operands
+(defvar jcl-mode--operands
   '("CLASS" "MSGCLASS" "MSGLEVEL" "USER" "PASSWORD" "NOTIFY" "TYPRUN"
     "PGM" "COND"
     "DISP" "NEW" "OLD" "KEEP" "CATLG" "SHARED" "SHR" "DELETE" "DEL"
@@ -156,23 +156,23 @@ quite varied.
 In other languages, they would be the 'keyword' arguments.")
 
 
-(defvar jcl-operators
+(defvar jcl-mode--operators
   '("=" "&" "&&" "*")
   "JCL 'operators'.  A really minimal set.")
 
-(defvar jcl-names
+(defvar jcl-mode--names
   "^//\\([^*][[:graph:]]+\\)"
   "JCL names.
 
 These are the 'names' of jobs and steps.")
 
 
-(defvar jcl-comments
+(defvar jcl-mode--comments
   "^//\\*.*$"
   "JCL 'full card' comments.")
 
 
-(defvar jcl-card-end-comments-1
+(defvar jcl-mode--card-end-comments-1
   "^//[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "JCL 'end of card' comments for 'full' cards.
 
@@ -180,10 +180,10 @@ Anything after the 'operands' in a card is a comment; this regexp
 selects them.")
 
 
-(defvar jcl-card-end-comments-1b
+(defvar jcl-mode--card-end-comments-1b
   (concatenate 'string
 	       "// +"
-	       (regexp-opt jcl-operations 'words)
+	       (regexp-opt jcl-mode--operations 'words)
 	       " +[[:graph:]]+"
 	       " +\\([[:graph:]].*\\)")
   "JCL 'end of card' comments for 'unnamed' cards.
@@ -192,7 +192,7 @@ Anything after the 'operands' in a card is a comment; this regexp
 selects them in case of cards that do not have a 'name'.")
 
 
-(defvar jcl-card-end-comments-2
+(defvar jcl-mode--card-end-comments-2
   "// +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "JCL 'end of card' comments for 'continuation' cards.
 
@@ -201,7 +201,7 @@ selects them in case of 'continuation' cards that do not have the
 'name' and 'operation'.")
 
 
-(defvar jcl-card-not-interpretable
+(defvar jcl-mode--card-not-interpretable
   "// \{14\}.*"
 
   "JCL 'card with nothing before column 16'; i.e., not interpretable.")
@@ -209,37 +209,37 @@ selects them in case of 'continuation' cards that do not have the
 
 ;;; JCL faces.
 
-(defcustom jcl-string-face 'font-lock-string-face
+(defcustom jcl-mode-string-face 'font-lock-string-face
   "The face used to fontify strings (single-quoted) in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
-(defcustom jcl-names-face 'font-lock-function-name-face
+(defcustom jcl-mode-names-face 'font-lock-function-name-face
   "The face used to fontify 'names' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
-(defcustom jcl-operations-face 'font-lock-keyword-face
+(defcustom jcl-mode-operations-face 'font-lock-keyword-face
   "The face used to fontify 'operations' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
-(defcustom jcl-operands-face 'font-lock-type-face
+(defcustom jcl-mode-operands-face 'font-lock-type-face
   "The face used to fontify 'operands' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
-(defcustom jcl-operators-face 'font-lock-builtin-face
+(defcustom jcl-mode-operators-face 'font-lock-builtin-face
   "The face used to fontify 'operators' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
-(defcustom jcl-comment-face 'font-lock-comment-face
+(defcustom jcl-mode-comment-face 'font-lock-comment-face
   "The face used to fontify 'comments' in JCL mode."
   :group 'jcl
   :type 'symbol
@@ -255,39 +255,39 @@ selects them in case of 'continuation' cards that do not have the
 (defvar jcl-mode-invalid-card 'jcl-mode-invalid-card) ; Why we need this?  Who knows?
 
 
-(defvar jcl-mode--jcl-operations-re
+(defvar jcl-mode--operations-re
   (concatenate 'string
 	       " "
-	       (regexp-opt jcl-operations 'words)
+	       (regexp-opt jcl-mode--operations 'words)
 	       " "))
 
 	       
-(defvar jcl-font-lock-keywords
+(defvar jcl-mode--font-lock-keywords
   `(
-    (,jcl-strings . ,jcl-string-face)
+    (,jcl-mode--strings . ,jcl-mode-string-face)
 
-    (,jcl-names . (1 ,jcl-names-face))
+    (,jcl-mode--names . (1 ,jcl-mode-names-face))
 
-    (,jcl-mode--jcl-operations-re . ,jcl-operations-face)
+    (,jcl-mode--operations-re . ,jcl-mode-operations-face)
 
-    (,(regexp-opt jcl-operands 'words) . ,jcl-operands-face)
+    (,(regexp-opt jcl-mode--operands 'words) . ,jcl-mode-operands-face)
 
-    (,(regexp-opt jcl-operators nil) . ,jcl-operators-face)
+    (,(regexp-opt jcl-mode--operators nil) . ,jcl-mode-operators-face)
 
     ;; These must be last.
-    (,jcl-card-end-comments-1 . (1 ,jcl-comment-face t))
+    (,jcl-mode--card-end-comments-1 . (1 ,jcl-mode-comment-face t))
 
-    (,jcl-card-end-comments-1b . (2 ,jcl-comment-face t))
+    (,jcl-mode--card-end-comments-1b . (2 ,jcl-mode-comment-face t))
     
-    (,jcl-card-end-comments-2 . (1 ,jcl-comment-face))
-    (,jcl-comments . (0 ,jcl-comment-face t))
+    (,jcl-mode--card-end-comments-2 . (1 ,jcl-mode-comment-face))
+    (,jcl-mode--comments . (0 ,jcl-mode-comment-face t))
     )
   "The JCL mode 'font-lock' 'keyword' specification."
   )
 
 
-(defvar jcl-font-lock-defaults
-  (list 'jcl-font-lock-keywords
+(defvar jcl-mode--font-lock-defaults
+  (list 'jcl-mode--font-lock-keywords
 	nil ; Do syntax based processing.
 	)
   "The JCL mode 'font-lock' defaults specification."
@@ -318,7 +318,7 @@ selects them in case of 'continuation' cards that do not have the
 
 ;;; jcl-imenu-generic-expression
 
-(defvar jcl-imenu-generic-expression
+(defvar jcl-mode-imenu-generic-expression
   '(("Job" "//\\([^* ]*\\) +JOB" 1)		; The JOB is always first.
     ("Steps" "//\\([^* ]+\\) +EXEC" 1)
     ("SYSIN" "//\\([^* ]*SYSIN\\) +DD" 1)
@@ -335,12 +335,12 @@ selects them in case of 'continuation' cards that do not have the
 
   :syntax-table jcl-mode-syntax-table
 
-  (setq-local font-lock-defaults jcl-font-lock-defaults)
+  (setq-local font-lock-defaults jcl-mode--font-lock-defaults)
 
-  (face-remap-add-relative jcl-comment-face  :weight 'bold)
-  (face-remap-add-relative jcl-operators-face  :weight 'bold
+  (face-remap-add-relative jcl-mode-comment-face  :weight 'bold)
+  (face-remap-add-relative jcl-mode-operators-face  :weight 'bold
 			   :foreground "Forest Green") ; This may be too much.
-  (face-remap-add-relative jcl-operations-face  :weight 'bold)
+  (face-remap-add-relative jcl-mode-operations-face  :weight 'bold)
 
   ;; Comments.
   ;; (setq-local comment-start "//\\*")
@@ -354,17 +354,17 @@ selects them in case of 'continuation' cards that do not have the
 
   ;; Set up the menus.
 
-  (easy-menu-define jcl-mainframe-os-menu jcl-mode-map
+  (easy-menu-define jcl-mode-mainframe-os-menu jcl-mode-map
     "JCL commands"
     '("JCL OS"
-      ["Submit Job" jcl-submit
+      ["Submit Job" jcl-mode-submit
        :help "Submit the job contained in the current buffer." ]
-      ["Submit a JCL File" jcl-submit-file
+      ["Submit a JCL File" jcl-mode-submit-file
        :help "Submit a JCL file to a card reader; a port will be asked for."])
     )
 
   (setq-local imenu-generic-expression
-	      (reverse jcl-imenu-generic-expression))
+	      (reverse jcl-mode-imenu-generic-expression))
   (imenu-add-to-menubar "JCL Code")
 
   ;; If defined, start the IRON MAIN minor mode, which sets up the
@@ -380,7 +380,14 @@ selects them in case of 'continuation' cards that do not have the
 ;;;; Commands
 ;;;; ========
 
-(defun jcl-submit (&optional port)
+(defvar *jcl-mode-default-os-reader-port* 3505
+  "The default OS reader port.
+
+This is the port number where JCL-MODE assumes the OS is listening for
+reader requests.")
+
+
+(defun jcl-mode-submit (&optional port)
   "Submits the buffer's content to the 'card reader' at PORT.
 
 The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
@@ -388,12 +395,13 @@ The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
 3505."
   
   (interactive
-   (let ((p (read-number "JCL: card reader number/port: " 3505))
+   (let ((p (read-number "JCL: card reader number/port: "
+			 *jcl-mode-default-os-reader-port*))
 	 )
      (list p)))
   
   (unless port
-    (setq port 3505))
+    (setq port *jcl-mode-default-os-reader-port*))
   
   (message "JCL: submitting to card reader number/port %s." port)
 
@@ -413,10 +421,10 @@ The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
     ))
 
 
-(defalias 'submit 'jcl-submit)
+(defalias 'submit 'jcl-mode-submit)
 
 
-(defun jcl-submit-file (jcl-file &optional port)
+(defun jcl-mode-submit-file (jcl-file &optional port)
   "Submits the file JCL-FILE to the 'card reader' at PORT.
 
 The file JCL-FILE contains 'JCL cards' (i.e., lines) which are
@@ -425,12 +433,13 @@ integer; its default is 3505."
     
   (interactive
    (let ((f (read-file-name "JCL: card file: " nil nil 'confirm))
-	 (p (read-number "JCL: card reader number/port: " 3505))
+	 (p (read-number "JCL: card reader number/port: "
+			 *jcl-mode-default-os-reader-port*))
 	 )
      (list f p)))
 
   (unless port
-    (setq port 3505))
+    (setq port *jcl-mode-default-os-reader-port*))
     
   (message "JCL: submitting '%s' to card reader number/port %s."
 	   jcl-file port)
