@@ -23,9 +23,9 @@
 ;;
 ;; or
 ;;
-;;   /*<comment>
+;;   //*<comment>
 ;;
-;; everything starting at the // or /* and ending at the end of
+;; everything starting at the // or //* and ending at the end of
 ;; line, or better at the 72nd column with whitespaces meaningful.
 ;; Actually, we are not even talking about "lines", but we are
 ;; talking about "cards" (as it should be).
@@ -71,7 +71,7 @@
 ;; To Do:
 ;;
 ;; Not all JCL keywords have been added to the font-lock machinery.
-;; Packaging still a bit "in fiery"
+;; Packaging still a bit "in fieri"
 ;; Polymode would be very nice to have.
 ;; Some extra fixes to the font-lock machinery are a must.
 
@@ -117,8 +117,17 @@ These are not really 'constants', as JCL does not really have them.")
 
 (defvar jcl-operations
   '("JOB" "EXEC" "DD" "PROC" "PEND"
+    "COMMAND" "CNTL" "ENDCNTL"
+    "IF" "THEN" "ELSE" "ENDIF"
+    "INCLUDE"
+    "JCLLIB"
+    "OUTPUT"
+    "SET"
+    "XMIT"
     )
-  "JCL operations.")
+  "JCL operations.
+
+List build from the IBM publication \"MVS JCL User's Guide\" (z/OS Version 2 Relase3).")
 
 
 ;; jcl-operands
@@ -164,11 +173,23 @@ These are the 'names' of jobs and steps.")
 
 
 (defvar jcl-card-end-comments-1
-  "^//[^* ]+ +[[:graph:]]* +[[:graph:]]+ +\\([[:graph:]].*\\)"
+  "^//[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "JCL 'end of card' comments for 'full' cards.
 
 Anything after the 'operands' in a card is a comment; this regexp
 selects them.")
+
+
+(defvar jcl-card-end-comments-1b
+  (concatenate 'string
+	       "// +"
+	       (regexp-opt jcl-operations 'words)
+	       " +[[:graph:]]+"
+	       " +\\([[:graph:]].*\\)")
+  "JCL 'end of card' comments for 'unnamed' cards.
+
+Anything after the 'operands' in a card is a comment; this regexp
+selects them in case of cards that do not have a 'name'.")
 
 
 (defvar jcl-card-end-comments-2
@@ -178,6 +199,12 @@ selects them.")
 Anything after the 'operands' in a card is a comment; this regexp
 selects them in case of 'continuation' cards that do not have the
 'name' and 'operation'.")
+
+
+(defvar jcl-card-not-interpretable
+  "// \{14\}.*"
+
+  "JCL 'card with nothing before column 16'; i.e., not interpretable.")
 
 
 ;;; JCL faces.
@@ -219,20 +246,39 @@ selects them in case of 'continuation' cards that do not have the
   )
 
 
+(defface jcl-mode-invalid-card
+  '((t :underline (:color "red" :style wave)))
+  "Face to colorize 'invalid' cards; mostly those with too much leading spaces."
+  :group 'hlasm
+  )
+
+(defvar jcl-mode-invalid-card 'jcl-mode-invalid-card) ; Why we need this?  Who knows?
+
+
+(defvar jcl-mode--jcl-operations-re
+  (concatenate 'string
+	       " "
+	       (regexp-opt jcl-operations 'words)
+	       " "))
+
+	       
 (defvar jcl-font-lock-keywords
   `(
     (,jcl-strings . ,jcl-string-face)
 
     (,jcl-names . (1 ,jcl-names-face))
 
-    (,(regexp-opt jcl-operations 'words) . ,jcl-operations-face)
+    (,jcl-mode--jcl-operations-re . ,jcl-operations-face)
 
     (,(regexp-opt jcl-operands 'words) . ,jcl-operands-face)
 
     (,(regexp-opt jcl-operators nil) . ,jcl-operators-face)
 
     ;; These must be last.
-    (,jcl-card-end-comments-1 . (1 ,jcl-comment-face))
+    (,jcl-card-end-comments-1 . (1 ,jcl-comment-face t))
+
+    (,jcl-card-end-comments-1b . (2 ,jcl-comment-face t))
+    
     (,jcl-card-end-comments-2 . (1 ,jcl-comment-face))
     (,jcl-comments . (0 ,jcl-comment-face t))
     )
