@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2022-10-08.1
+;; Version: 2023-05-04.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -21,7 +21,7 @@
 ;; This is the main file of the package which taked care of loading
 ;; all the other bits and pieces, minor and major modes necessary for
 ;; its functioning.  E.g., see the major modes `jcl-mode' and
-;; `asmibm-mode'.
+;; `hlasm-mode'.
 ;;
 ;; The code has been tested with MVS TK4- and MVS "Jay Moseley"
 ;; build, running on a Hercules (SDL/Hyperion 4.4.x).
@@ -55,6 +55,7 @@ should cause the (re)compilation fo the folder.")
 
 ;; The order of the require and load calls is relevant.
 
+(require 'cl-lib)
 (require 'ruler-mode)
 (require 'desktop)
 (require 'widget)
