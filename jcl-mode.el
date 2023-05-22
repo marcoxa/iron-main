@@ -181,11 +181,11 @@ selects them.")
 
 
 (defvar jcl-mode--card-end-comments-1b
-  (concatenate 'string
-	       "// +"
-	       (regexp-opt jcl-mode--operations 'words)
-	       " +[[:graph:]]+"
-	       " +\\([[:graph:]].*\\)")
+  (cl-concatenate 'string
+		  "// +"
+		  (regexp-opt jcl-mode--operations 'words)
+		  " +[[:graph:]]+"
+		  " +\\([[:graph:]].*\\)")
   "JCL 'end of card' comments for 'unnamed' cards.
 
 Anything after the 'operands' in a card is a comment; this regexp
@@ -256,10 +256,10 @@ selects them in case of 'continuation' cards that do not have the
 
 
 (defvar jcl-mode--operations-re
-  (concatenate 'string
-	       " "
-	       (regexp-opt jcl-mode--operations 'words)
-	       " "))
+  (cl-concatenate 'string
+		  " "
+		  (regexp-opt jcl-mode--operations 'words)
+		  " "))
 
 	       
 (defvar jcl-mode--font-lock-keywords
