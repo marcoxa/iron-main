@@ -82,7 +82,7 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
 
 
 (defvar iron-main-panels-editable-field-keymap
-  (let ((km (make-sparse-keymap)))
+  (let ((km (make-sparse-keymap "Iron Main Editable Field Keymap")))
     (set-keymap-parent km widget-field-keymap)
 
     ;; Redefine F3; the original is
@@ -91,10 +91,10 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
     (define-key km (kbd "<f3>") 'iron-main-panels--exit-panel)
     km
     )
-  "The IRON MAIN Panel mode key map.
+  "The IRON MAIN Editable Field key map.
 
-The key map inherits from `widget-keymap'.  The key '<f3>' (that is,
-'PF3') exits the current panel.")
+The key map inherits from `widget-field-keymap'.  The key '<f3>' (that
+is, 'PF3') exits the current panel.")
 
 
 ;;; Buffer local variables.
@@ -359,7 +359,8 @@ interface."
 	(widget-create 'editable-field
                        :size 46	   ; A name is at most 44 plus quotes.
                        :format "Data set name: %v " ; Text after the field!
-		       (iron-main-ds-rep-name iron-main-panels--current-ds)
+		       :value (iron-main-ds-rep-name iron-main-panels--current-ds)
+		       ;; (iron-main-ds-rep-name iron-main-panels--current-ds)
 		       :notify
 		       (lambda (w &rest ignore)
 			 (ignore ignore)
@@ -375,8 +376,7 @@ interface."
   (setf iron-main-panels--vol-widget
 	(widget-create 'editable-field
 		       :format "Volume serial: %v"
-		       :value (iron-main-ds-rep-vol
-			       iron-main-panels--current-ds)
+		       :value (iron-main-ds-rep-vol iron-main-panels--current-ds)
 		       :size 6
 		       :notify
 		       (lambda (w &rest ignore)
@@ -578,7 +578,7 @@ file system(s) that Emacs has direct access to; most notably, the
 	(widget-create 'radio-button-choice
 		       :tag "Dataset organization (DSORG)"
 		       :doc "Dataset organization (DSORG)"
-		       :value "PO"
+		       ;; :value "PO"
 		       :void  "PO"
 		       :indent 4
 		       :help-echo "Choose the dataset organization"
@@ -603,7 +603,7 @@ file system(s) that Emacs has direct access to; most notably, the
   (setf iron-main-panels--space-unit-widget
 	(widget-create 'radio-button-choice
 		       :tag "Dataset space unit (SPACE)"
-		       :value "TRK"
+		       ;; :value "TRK"
 		       :void  "TRK"
 		       :indent 4
 		       :help-echo "Choose the dataset space unit"
@@ -639,6 +639,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :keymap
 		       iron-main-panels-editable-field-keymap
 		       ))
+  
   (widget-insert "    ")
   (setf iron-main-panels--secondary-widget
 	(widget-create 'integer
@@ -657,6 +658,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :keymap
 		       iron-main-panels-editable-field-keymap
 		       ))
+  
   (widget-insert "    ")
   (setf iron-main-panels--dir-widget
 	(widget-create 'integer
@@ -689,14 +691,21 @@ file system(s) that Emacs has direct access to; most notably, the
 			   (setf (iron-main-ds-rep-name
 				  iron-main-panels--current-ds)
 				 (widget-value iron-main-panels--dsname-widget)
+				 
 				 (iron-main-ds-rep-dsorg
 				  iron-main-panels--current-ds)
-				 (widget-value iron-main-panels--dsorg-widget))
-			   (message "DD: <%s>."
+				 (widget-value iron-main-panels--dsorg-widget)
+
+				 ;; (iron-main-ds-rep-space-unit
+				 ;;  iron-main-panels--current-ds)
+				 ;; (widget-value iron-main-panels--space-unit-widget)
+				 )
+			   
+			   (message "DD %s"
 				    (iron-main-ds-to-string
 				     iron-main-panels--current-ds)
 				    ))
-                 "Allocate")
+                 :value "Allocate")
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
@@ -705,7 +714,8 @@ file system(s) that Emacs has direct access to; most notably, the
 				    (iron-main-ds-rep-name
 				     iron-main-panels--current-ds)
 				    ))
-                 "View job buffer")
+		 :value "View job buffer")
+  
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify (lambda (&rest ignore)
@@ -716,7 +726,8 @@ file system(s) that Emacs has direct access to; most notably, the
 				    )
 			   (iron-main-panels--dataset-save session)
 			   )
-                 "Allocate and Save")
+                 :value "Allocate and Save")
+  
   (widget-insert "    ")
   (widget-create 'push-button
                  :notify
@@ -727,7 +738,7 @@ file system(s) that Emacs has direct access to; most notably, the
 			     iron-main-panels--current-ds)
 			    )
 		   )
-                 "Cancel")
+                 :value "Cancel")
 
   (widget-insert "\n")
 
@@ -1081,16 +1092,25 @@ where the relevant bits and pieces used by the emulator can be found."
   ;; This function is just a code organization/refactoring tool.   Do
   ;; not call by itself.
 
-  (widget-insert "OS   ")
-  (widget-create 'directory :value iron-main-hercules-os-dir
-		 :tag ""
+  ;; (widget-insert "OS   ")
+  (widget-create 'directory
+		 :value iron-main-hercules-os-dir
+		 :tag "OS   "
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-os-dir)
+		 ;; :format "%v"
+		 :entry-format "V %v"
+		 :keymap iron-main-panels-editable-field-keymap
 		 :size (+ 4
 			  (max (length iron-main-hercules-os-dir)
 			       (length iron-main-hercules-dasd-dir))))
   (widget-insert "\n")
-  (widget-insert "DASDs")
-  (widget-create 'directory :value iron-main-hercules-dasd-dir
-		 :tag ""
+  ;; (widget-insert "DASDs")
+  (widget-create 'directory
+		 :value iron-main-hercules-dasd-dir
+		 :tag "DASDs"
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-dasd-dir)
+		 ;; :format "%v"
+		 :keymap iron-main-panels-editable-field-keymap
 		 :size (+ 4
 			  (max (length iron-main-hercules-os-dir)
 			       (length iron-main-hercules-dasd-dir))))
