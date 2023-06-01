@@ -65,6 +65,7 @@ should cause the (re)compilation fo the folder.")
 ;; Mainframe interaction files.
 
 (load (expand-file-name "iron-main-vars" iron-main-path))
+(load (expand-file-name "iron-main-widgets" iron-main-path))
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-utils" iron-main-path))
 (load (expand-file-name "iron-main-session" iron-main-path))
