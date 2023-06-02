@@ -46,7 +46,10 @@
 ;; "window/buffer".
 ;;
 ;; The code below uses several examples of the "widget" library found
-;; in the Emacs Internet.
+;; in Emacs.
+
+(defvar iron-main-panels--overline (make-string 72 175))
+(defvar iron-main-panels--underline (make-string 72 ?_))
 
 (defvar-local iron-main-panels--current-ds (make-iron-main-ds-rep))
 
@@ -146,6 +149,21 @@ See Also:
   "List of \"link\" widgets for the commands available in the panel.")
 
 
+;;; In-panel navigation.
+;;
+;; The following functions *assume* that the first and last character in a
+;; panel are NOT part of a widget.
+
+(cl-defun iron-main-panels--goto-first-widget ()
+  (goto-char (point-min))
+  (widget-forward 1))
+
+
+(cl-defun iron-main-panels--goto-last-widget ()
+  (goto-char (point-max))
+  (widget-backward 1))
+
+
 ;;; Commands alists.
 ;;
 ;; Commands alists are lists of "specifications" for link widgets to
@@ -202,7 +220,7 @@ See Also:
 
 (cl-defun iron-main-panels--find-command (cmd commands-alist)
   ;; (assoc cmd commands-alist 'string=)
-  (assoc cmd commands-alist)		; Older Emacsen do not accept the third arg.
+  (assoc cmd commands-alist) ; Older Emacsen do not accept the third arg.
   )
 
 
@@ -320,7 +338,7 @@ Note that `overwrite-mode' is turned on in the panels."
 				     :weight bold
 				     )
 			     ))
-  (widget-insert (make-string 72 175))	; 175 is the "overline"
+  (widget-insert iron-main-panels--overline)	; 175 is the "overline"
   (widget-insert "\n")
   )
 
@@ -367,9 +385,13 @@ Note that `overwrite-mode' is turned on in the panels."
   (setq iron-main-panels--dsname-widget
 	(widget-create 'editable-field
                        :size 46	   ; A name is at most 44 plus quotes.
+                       
                        :format "Data set name: %v " ; Text after the field!
-		       :value (iron-main-ds-rep-name iron-main-panels--current-ds)
+                       
+		       :value
+                       (iron-main-ds-rep-name iron-main-panels--current-ds)
 		       ;; (iron-main-ds-rep-name iron-main-panels--current-ds)
+                       
 		       :notify
 		       (lambda (w &rest ignore)
 			 (ignore ignore)
@@ -378,15 +400,19 @@ Note that `overwrite-mode' is turned on in the panels."
 			 (setf (iron-main-ds-rep-name
 				iron-main-panels--current-ds)
 			       (widget-value w)))
+                       
 		       :keymap
 		       iron-main-panels-editable-field-keymap
 		       ))
   (widget-insert "\n")
   (setf iron-main-panels--vol-widget
 	(widget-create 'editable-field
-		       :format "Volume serial: %v"
-		       :value (iron-main-ds-rep-vol iron-main-panels--current-ds)
-		       :size 6
+                       :size 6
+		       :format "Volume serial: %v "
+                       
+		       :value
+                       (iron-main-ds-rep-vol iron-main-panels--current-ds)
+                       
 		       :notify
 		       (lambda (w &rest ignore)
 			 (ignore ignore)
@@ -395,6 +421,7 @@ Note that `overwrite-mode' is turned on in the panels."
 			 (setf (iron-main-ds-rep-vol
 				iron-main-panels--current-ds)
 			       (widget-value w)))
+                       
 		       :keymap
 		       iron-main-panels-editable-field-keymap
 
@@ -462,7 +489,9 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (message "IMHS00I: Hercules datasets and file system utilities.")
   (prog1 (widget-setup)
-    (widget-forward 1))
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -570,23 +599,25 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (setf iron-main-panels--vol-widget
 	(widget-create 'editable-field
-		       :format "Volume (VOL):                  %v "
-		       :value (iron-main-ds-rep-vol
+		       :format "Unit:                          %v "
+		       :value (iron-main-ds-rep-unit
 			       iron-main-panels--current-ds)
 		       :size 6
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "VOL: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-vol
-					iron-main-panels--current-ds)
-				       (widget-value w)))
+		       :notify
+                       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "UNIT: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-unit
+				iron-main-panels--current-ds)
+			       (widget-value w)))
+                       
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-		       :help-echo "Please enter the volume serial info..."
+		       :help-echo "Please enter the unit info..."
 		       ))
   (widget-insert "\n\n")
-  (message "IMPDSA4: VOL widget created.")
+  (message "IMPDSA4: UNIT widget created.")
 
   (widget-insert "Dataset organization (DSORG): \n")
   (setf iron-main-panels--dsorg-widget
@@ -596,14 +627,18 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;; :value "PO"
 		       :void  "PO"
 		       :indent 4
-		       :help-echo "Please choose the dataset organization: PO, PS..."
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "Dataset organization: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-dsorg
-					iron-main-panels--current-ds)
-				       (widget-value w)))
+		       :help-echo
+                       "Please choose the dataset organization: PO, PS..."
+                       
+		       :notify
+                       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Dataset organization: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-dsorg
+				iron-main-panels--current-ds)
+			       (widget-value w)))
+                       
 		       '(item :tag "Partitioned Data Set (PO)"
 			      :value "PO")
 		       ;; '(item :tag "Partitioned Data Set Extended (PDSE)"
@@ -676,7 +711,9 @@ file system(s) that Emacs has direct access to; most notably, the
 				       (widget-value w)))
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-		       :help-echo "Please the secondary amount of space..."
+                       
+		       :help-echo
+                       "Please the secondary amount of space..."
 		       ))
   (message "IMPDSA8: Secondary widget created.")
   
@@ -698,61 +735,74 @@ file system(s) that Emacs has direct access to; most notably, the
 
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-		       :help-echo "Please enter the numebr of directory blocks..."
+                       
+		       :help-echo
+                       "Please enter the number of directory blocks..."
 		       ))
   (message "IMPDSA9: Directory blocks widget created.")
 
   ;; (widget-insert "\n\n\n")
   
   (widget-insert "\n")
-  (widget-insert (make-string 72 ?_))
+  (widget-insert iron-main-panels--underline)
   (widget-insert "\n")
   
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (setf (iron-main-ds-rep-name
-				  iron-main-panels--current-ds)
-				 (widget-value iron-main-panels--dsname-widget)
+                 :value "Allocate"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (setf (iron-main-ds-rep-name
+			  iron-main-panels--current-ds)
+			 (widget-value iron-main-panels--dsname-widget)
 				 
-				 (iron-main-ds-rep-dsorg
-				  iron-main-panels--current-ds)
-				 (widget-value iron-main-panels--dsorg-widget)
+			 (iron-main-ds-rep-dsorg
+			  iron-main-panels--current-ds)
+			 (widget-value iron-main-panels--dsorg-widget)
 
-				 ;; (iron-main-ds-rep-space-unit
-				 ;;  iron-main-panels--current-ds)
-				 ;; (widget-value iron-main-panels--space-unit-widget)
-				 )
+			 ;; (iron-main-ds-rep-space-unit
+			 ;;  iron-main-panels--current-ds)
+			 ;; (widget-value iron-main-panels--space-unit-widget)
+			 )
 			   
-			   (message "DD %s"
-				    (iron-main-ds-to-string
-				     iron-main-panels--current-ds)
-				    ))
-                 :value "Allocate")
+		   (message "DD %s"
+			    (iron-main-ds-to-string
+			     iron-main-panels--current-ds)
+			    ))
+                 )
   (widget-insert "    ")
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (message "JCL buffer for '%s': ...."
-				    (iron-main-ds-rep-name
-				     iron-main-panels--current-ds)
-				    ))
-		 :value "View job buffer")
+                 :value "View job buffer"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "JCL buffer for '%s': ...."
+			    (iron-main-ds-rep-name
+			     iron-main-panels--current-ds)
+			    ))
+		 )
   
   (widget-insert "    ")
   (widget-create 'push-button
-                 :notify (lambda (&rest ignore)
-			   (ignore ignore)
-			   (message "Data set name: %s."
-				    (iron-main-ds-rep-name
-				     iron-main-panels--current-ds)
-				    )
-			   (iron-main-panels--dataset-save session)
-			   )
-                 :value "Allocate and Save")
+                 :value "Allocate and Save"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "Data set name: %s."
+			    (iron-main-ds-rep-name
+			     iron-main-panels--current-ds)
+			    )
+		   (iron-main-panels--dataset-save session)
+		   )
+                )
   
   (widget-insert "    ")
   (widget-create 'push-button
+                 :value "Cancel"
+                 
                  :notify
 		 (lambda (&rest ignore)
 		   (ignore ignore)
@@ -761,13 +811,15 @@ file system(s) that Emacs has direct access to; most notably, the
 			     iron-main-panels--current-ds)
 			    )
 		   )
-                 :value "Cancel")
+               )
 
   (widget-insert "\n")
 
   (message "IMDS00I: Dataset allocation panel set up.")
   (prog1 (widget-setup)
-    (widget-forward 1))
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -811,7 +863,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :keymap
 		       iron-main-panels-editable-field-keymap))
 
-  (widget-insert (make-string 72 ?_))
+  (widget-insert iron-main-panels--underline)
   (widget-insert "\n")
   
   (widget-create 'push-button
@@ -851,7 +903,9 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (message "IMDS00I: Dataset upload panel set up.")
   (prog1 (widget-setup)
-    (widget-forward 1))
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -891,13 +945,15 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-panels--current-ds)
 		       :size (- 72 (length "File: "))))
 
-  (widget-insert (make-string 72 ?_))
+  (widget-insert iron-main-panels--underline)
   (widget-insert "\n")
   
 
   (message "IMDS00I: Dataset edit panel set up.")
   (prog1 (widget-setup)
-    (widget-forward 1))
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -919,6 +975,9 @@ PANEL must be a buffer or a buffer name."
   (with-current-buffer panel
     iron-main-panels--session))
 
+
+;; Maybe use the widget "property" functions instead in the next functions:
+;; i.e., `widget-get'.
 
 (cl-defun iron-main-panels--widget-tag (w)
   "Get the :tag of widget W.
@@ -1099,9 +1158,10 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
-  ;; (prog1 (widget-setup)
-  ;;   (widget-forward 1))
-  (widget-setup)
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -1140,7 +1200,7 @@ where the relevant bits and pieces used by the emulator can be found."
 			  (max (length os-dir)
 			       (length dasd-dir))))
   (widget-insert "\n\n")
-  (widget-insert (make-string 72 175))	; 175 is the "overline"
+  (widget-insert iron-main-panels--overline)
   (widget-insert "\n")
   )
 
@@ -1475,7 +1535,9 @@ if needed."
   
   (message "IMHS00I: Hercules help.")
   (prog1 (widget-setup)
-    (widget-forward 1))
+    ;; (widget-forward 1)
+    (iron-main-panels--goto-first-widget)
+    )
   )
 
 
@@ -1519,7 +1581,8 @@ effect.  If the 'back' buffer is not live"
 	))))
 
 
-(cl-defun iron-main-panels--invoke-panel (from panel-start-function &rest args)
+(cl-defun iron-main-panels--invoke-panel
+    (from panel-start-function &rest args)
   "Start a new panel by calling PANEL-START-FUNCTION.
 
 The function PANEL-START-FUNCTION is one of the functions setting
