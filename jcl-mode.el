@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20230501.1
+;; Version: 20230601.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -127,7 +127,8 @@ These are not really 'constants', as JCL does not really have them.")
     )
   "JCL operations.
 
-List build from the IBM publication \"MVS JCL User's Guide\" (z/OS Version 2 Relase3).")
+List build from the IBM publication \"MVS JCL User's Guide\" (z/OS
+Version 2 Relase3).")
 
 
 ;; jcl-operands
