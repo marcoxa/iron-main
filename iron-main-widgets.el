@@ -13,13 +13,14 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'iron-main-vars)
 (require 'widget)
 (require 'wid-edit)
 
 
-(define-widget 'widget-non-negative-integer 'integer ; 'natnum only in recent emacs.
+(define-widget 'iron-main-natnum-widget
+  'integer ; 'natnum only in recent emacs.
   "A non negative integer"
+  
   ;; This is a widget that fixes the wrong functions
   ;; `:value-to-external' in `sexp' and `restricted-sexp' widgets (the
   ;; `numeber' widget must also be fixed).
@@ -32,9 +33,33 @@
   :default-value 42			; Used in a limited way FTTB;
 					; `:value' should be
 					; initialized to it if missing.
-  :value-to-external 'widget--non-negative-integer-value-to-ext
+  :value-to-external 'iron-main--natnum-value-to-ext
   :help-echo "Enter a non negative integer..."
   :validate-regexp "[0-9]*"
+  )
+
+
+(cl-defun iron-main--natnum-value-to-ext (widget value)
+  ;; Lifted, and fixed, from `:value-to-external' in
+  ;; `restricted-sexp'.
+
+  (unless (stringp value)
+    (display-warning
+     'widget-bad-default-value
+     (format-message
+      "\nA widget of type %S has a bad default value.
+value: %S
+match function: %S
+match-alternatives: %S"
+      (widget-type widget)
+      value
+      (widget-get widget :match)
+      (widget-get widget :match-alternatives))
+     :warning))
+  (if (and (stringp value) (string-equal "" value))
+      ;; Oooops, we cannot just `read'.
+      (widget-get widget :default-value)
+    (read value))
   )
 
 
