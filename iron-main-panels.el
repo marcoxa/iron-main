@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 20221014.1
+;; Version: 2023-06-01.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -37,6 +37,7 @@
   (require 'wid-edit))
 
 (require 'iron-main-vars)
+(require 'iron-main-utils)
 
 
 ;;; IRON MAIN panels.
@@ -199,15 +200,19 @@ See Also:
   )
 
 
-(defun iron-main-panels--find-command (cmd commands-alist)
+(cl-defun iron-main-panels--find-command (cmd commands-alist)
   ;; (assoc cmd commands-alist 'string=)
   (assoc cmd commands-alist)		; Older Emacsen do not accept the third arg.
   )
 
 
-(defun iron-main-panels--command-field ()
+(cl-defun iron-main-panels--command-field ()
   (widget-insert "Command")
-  (widget-create 'integer :size 3 :tag "" :value ""
+  (widget-create 'iron-main-natnum-widget
+                 :size 3
+                 :tag ""
+                 :value ""
+                 
 		 :validate
 		 (lambda (cmd)
 		   (<= 1 (widget-value cmd) (length iron-main-panels--cmds)))
@@ -229,6 +234,7 @@ See Also:
 		     (when cmd-notify
 		       (apply cmd-notify cmd-widget ()))
 		     ))
+                 
 		 :keymap
 		 iron-main-panels-editable-field-keymap
 		 )
@@ -237,7 +243,7 @@ See Also:
   )
 
 
-(defun iron-main-panels--insert-command-widgets (cmd-alist)
+(cl-defun iron-main-panels--insert-command-widgets (cmd-alist)
   (cl-loop for option in cmd-alist
 	   for opt-i from 1
 	   for header = (plist-get option :header)
@@ -282,11 +288,14 @@ and a specialized keymap.
 
 You an use the function key `F3' (i.e., `PF3') or the [Qq] keys to
 exit a panel.  Exiting the top panel will exit the IRON MAIN
-interface."
+interface.
+
+Note that `overwrite-mode' is turned on in the panels."
 
   (setq-local iron-main-panels--in-panel t)
   (setq-local iron-main-panels--back nil)
 
+  (overwrite-mode 42)                   ; Turn on `overwrite-mode'.
   (use-local-map iron-main-panels-mode-keymap)
   )
 
@@ -298,7 +307,7 @@ interface."
 
 ;; title-field
 
-(defun iron-main-panels--title-field (&optional title)
+(cl-defun iron-main-panels--title-field (&optional title)
   "Create the the IRON MAIN panel title using argument TITLE."
   
   (unless title
@@ -319,7 +328,7 @@ interface."
 ;; help-field
 ;; Unused.
 
-(defun iron-main-panels--help-field ()
+(cl-defun iron-main-panels--help-field ()
   "Create the \"help\" field at the bottom of the window."
   ;; Call last before `widget-setup'.
 
@@ -353,7 +362,7 @@ interface."
 ;; Datasets and file system handling panel.
 ;; ----------------------------------------
 
-(defun iron-main-panels--dsname-item-field ()
+(cl-defun iron-main-panels--dsname-item-field ()
   "Create the `dsname' editable-field widget in the IRON MAIN panel."
   (setq iron-main-panels--dsname-widget
 	(widget-create 'editable-field
@@ -413,7 +422,7 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (ignore args)
   
-  (cl-assert (iron-main-session-p session) t
+  (cl-assert (iron-main-session-p session) nil
 	     "SESSION %S is not a `iron-main-session'"
 	     session)
 
@@ -460,7 +469,7 @@ file system(s) that Emacs has direct access to; most notably, the
 ;; Dataset allocation.
 ;; -------------------
 
-(defun iron-main-panels--dataset-allocation (session &rest args)
+(cl-defun iron-main-panels--dataset-allocation (session &rest args)
   "Create the IRON MAIN dataset allocation panel."
   
   (interactive)
@@ -496,7 +505,7 @@ file system(s) that Emacs has direct access to; most notably, the
 
   (setf iron-main-panels--recfm-widget
 	(widget-create 'editable-field
-		       :format "Record format (RECFM):         %v"
+		       :format "Record format (RECFM):         %v "
 		       :value (iron-main-ds-rep-recfm
 			       iron-main-panels--current-ds)
 		       :size 3
@@ -509,18 +518,19 @@ file system(s) that Emacs has direct access to; most notably, the
 				       (widget-value w)))
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-
+		       :help-echo "Please enter the record format: F, FB, V..."
 		       ))
   (widget-insert "\n")
+  (message "IMPDSA1: RECFM widget created.")
 
   (setf iron-main-panels--lrecl-widget
-	(widget-create 'integer
-		       :format "Logical record length (LRECL): %v"
+	(widget-create  'iron-main-natnum-widget
+		       :format "Logical record length (LRECL): %v "
 		       :value (iron-main-ds-rep-lrecl
 			       iron-main-panels--current-ds)
 		       :size 4
 		       
-		       :value-regexp "[0-9]+"
+		       ;; :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "LRECL: <%s>."
@@ -531,16 +541,18 @@ file system(s) that Emacs has direct access to; most notably, the
 
 		       :keymap
 		       iron-main-panels-editable-field-keymap
+		       :help-echo "Please enter the record length..."
 		       ))
   (widget-insert "\n")
+  (message "IMPDSA2: LRECL widget created.")
 
   (setf iron-main-panels--blksize-widget
-	(widget-create 'integer
-		       :format "Block size (BLKSIZE):          %v"
+	(widget-create  'iron-main-natnum-widget
+		       :format "Block size (BLKSIZE):          %v "
 		       :value (iron-main-ds-rep-blksize
 			       iron-main-panels--current-ds)
 		       :size 6
-		       :value-regexp "[0-9]+"
+		       ;; :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "BLKSIZE: <%s>."
@@ -551,12 +563,14 @@ file system(s) that Emacs has direct access to; most notably, the
 
 		       :keymap
 		       iron-main-panels-editable-field-keymap
+		       :help-echo "Please enter the block size..."
 		       ))
   (widget-insert "\n\n")
+  (message "IMPDSA3: BLKSIZE widget created.")
 
   (setf iron-main-panels--vol-widget
 	(widget-create 'editable-field
-		       :format "Volume (VOL):                  %v"
+		       :format "Volume (VOL):                  %v "
 		       :value (iron-main-ds-rep-vol
 			       iron-main-panels--current-ds)
 		       :size 6
@@ -569,9 +583,10 @@ file system(s) that Emacs has direct access to; most notably, the
 				       (widget-value w)))
 		       :keymap
 		       iron-main-panels-editable-field-keymap
-
+		       :help-echo "Please enter the volume serial info..."
 		       ))
   (widget-insert "\n\n")
+  (message "IMPDSA4: VOL widget created.")
 
   (widget-insert "Dataset organization (DSORG): \n")
   (setf iron-main-panels--dsorg-widget
@@ -581,7 +596,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;; :value "PO"
 		       :void  "PO"
 		       :indent 4
-		       :help-echo "Choose the dataset organization"
+		       :help-echo "Please choose the dataset organization: PO, PS..."
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "Dataset organization: <%s>."
@@ -595,9 +610,10 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;;        :value "PDSE")
 		       '(item :tag "Sequential (PS)"
 			      :value "PS")
-		       ;; Add other ones.
+		       ;; Add other ones.		       
 		       ))
   (widget-insert "\n\n")
+  (message "IMPDSA5: DSORG widget created.")
 
   (widget-insert "Space allocation:\n")
   (setf iron-main-panels--space-unit-widget
@@ -606,7 +622,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;; :value "TRK"
 		       :void  "TRK"
 		       :indent 4
-		       :help-echo "Choose the dataset space unit"
+		       :help-echo "Please choose the dataset space unit..."
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "Dataset space unit: <%s>."
@@ -619,15 +635,16 @@ file system(s) that Emacs has direct access to; most notably, the
 		       '(item "BLK")
 		       ;; Add other ones.
 		       ))
-    
   (widget-insert "\n")
+  (message "IMPDSA6: SPACE widget created.")
+  
   (setf iron-main-panels--primary-widget
-	(widget-create 'integer
-		       :format "Primary: %v"
-		       :value (iron-main-ds-rep-lrecl
+	(widget-create  'iron-main-natnum-widget
+		       :format "Primary: %v "
+		       :value (iron-main-ds-rep-primary
 			       iron-main-panels--current-ds)
 		       :size 8
-		       :value-regexp "[0-9]+"
+		       ;; :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "Primary: <%s>."
@@ -638,16 +655,18 @@ file system(s) that Emacs has direct access to; most notably, the
 
 		       :keymap
 		       iron-main-panels-editable-field-keymap
+		       :help-echo "Please the primary amount of space..."
 		       ))
+  (message "IMPDSA7: Primary widget created.")
   
   (widget-insert "    ")
   (setf iron-main-panels--secondary-widget
-	(widget-create 'integer
-		       :format "Secondary: %v"
+	(widget-create  'iron-main-natnum-widget
+		       :format "Secondary: %v "
 		       :value (iron-main-ds-rep-secondary
 			       iron-main-panels--current-ds)
 		       :size 8
-		       :value-regexp "[0-9]+"
+		       ;; :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "Secondary: <%s>."
@@ -657,16 +676,18 @@ file system(s) that Emacs has direct access to; most notably, the
 				       (widget-value w)))
 		       :keymap
 		       iron-main-panels-editable-field-keymap
+		       :help-echo "Please the secondary amount of space..."
 		       ))
+  (message "IMPDSA8: Secondary widget created.")
   
   (widget-insert "    ")
   (setf iron-main-panels--dir-widget
-	(widget-create 'integer
-		       :format "Directory blocks: %v"
+	(widget-create  'iron-main-natnum-widget
+		       :format "Directory blocks: %v "
 		       :value (iron-main-ds-rep-directory
 			       iron-main-panels--current-ds)
 		       :size 4
-		       :value-regexp "[0-9]+"
+		       ;; :value-regexp "[0-9]+"
 		       :notify (lambda (w &rest ignore)
 				 (ignore ignore)
 				 (message "Directory blocks: <%s>."
@@ -677,7 +698,9 @@ file system(s) that Emacs has direct access to; most notably, the
 
 		       :keymap
 		       iron-main-panels-editable-field-keymap
+		       :help-echo "Please enter the numebr of directory blocks..."
 		       ))
+  (message "IMPDSA9: Directory blocks widget created.")
 
   ;; (widget-insert "\n\n\n")
   
@@ -753,7 +776,7 @@ file system(s) that Emacs has direct access to; most notably, the
 
 (defvar iron-main-panels--filename-widget "")
 
-(defun iron-main-panels--dataset-save (session &rest args)
+(cl-defun iron-main-panels--dataset-save (session &rest args)
   "Create the IRON MAIN dataset save panel."
   
   (interactive)
@@ -835,7 +858,7 @@ file system(s) that Emacs has direct access to; most notably, the
 ;; Dataset edit dataset member panel.
 ;; ----------------------------------
 
-(defun iron-main-panels--dataset-edit (session &rest args)
+(cl-defun iron-main-panels--dataset-edit (session &rest args)
   "Create the IRON MAIN dataset save panel."
   
   (interactive)
@@ -889,7 +912,7 @@ file system(s) that Emacs has direct access to; most notably, the
   "The session a panel is attached to.")
 
 
-(defun iron-main-panels--get-session (panel)
+(cl-defun iron-main-panels--get-session (panel)
   "Get the IRON MAIN session attached to PANEL.
 
 PANEL must be a buffer or a buffer name."
@@ -897,7 +920,7 @@ PANEL must be a buffer or a buffer name."
     iron-main-panels--session))
 
 
-(defun iron-main-panels--widget-tag (w)
+(cl-defun iron-main-panels--widget-tag (w)
   "Get the :tag of widget W.
 
 Notes:
@@ -907,7 +930,7 @@ This function is necessary because it is inexplicably absent from the
   (plist-get (cdr w) :tag))
 
 
-(defun iron-main-panels--widget-notify (w)
+(cl-defun iron-main-panels--widget-notify (w)
   "Get the :notify function of widget W.
 
 Notes:
@@ -1076,44 +1099,46 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 
   ;; (iron-main-help-field) ; Not yet.
   (message "IMMP00I: My Emacs thinks it's an ISPF!")
-  (prog1 (widget-setup)
-    (widget-forward 1))
+  ;; (prog1 (widget-setup)
+  ;;   (widget-forward 1))
+  (widget-setup)
   )
 
 
-(defun iron-main-panels--hercules-top-subpanel (os-dir dasd-dir)
+(cl-defun iron-main-panels--hercules-top-subpanel
+    (&optional (os-dir iron-main-hercules-os-dir)
+               (dasd-dir iron-main-hercules-dasd-dir))
+                                                    
   "Internal function setting up the Hercules part of the top panel.
 
 The arguments OS-DIR and DASD-DIR are referring to the directories
 where the relevant bits and pieces used by the emulator can be found."
 
-  (ignore os-dir dasd-dir)
-  
   ;; This function is just a code organization/refactoring tool.   Do
   ;; not call by itself.
 
   ;; (widget-insert "OS   ")
   (widget-create 'directory
-		 :value iron-main-hercules-os-dir
+		 :value os-dir
 		 :tag "OS   "
 		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-os-dir)
 		 ;; :format "%v"
-		 :entry-format "V %v"
+		 ;; :entry-format "V %v"
 		 :keymap iron-main-panels-editable-field-keymap
 		 :size (+ 4
-			  (max (length iron-main-hercules-os-dir)
-			       (length iron-main-hercules-dasd-dir))))
+			  (max (length os-dir)
+			       (length dasd-dir))))
   (widget-insert "\n")
   ;; (widget-insert "DASDs")
   (widget-create 'directory
-		 :value iron-main-hercules-dasd-dir
+		 :value dasd-dir
 		 :tag "DASDs"
 		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-dasd-dir)
 		 ;; :format "%v"
 		 :keymap iron-main-panels-editable-field-keymap
 		 :size (+ 4
-			  (max (length iron-main-hercules-os-dir)
-			       (length iron-main-hercules-dasd-dir))))
+			  (max (length os-dir)
+			       (length dasd-dir))))
   (widget-insert "\n\n")
   (widget-insert (make-string 72 175))	; 175 is the "overline"
   (widget-insert "\n")
@@ -1123,7 +1148,7 @@ where the relevant bits and pieces used by the emulator can be found."
 (defvar-local iron-main-panels--hs-devinfo-ins-pt nil)
 
 
-(defun iron-main-panels--hercules-clean-devlist (devtype devlist-string)
+(cl-defun iron-main-panels--hercules-clean-devlist (devtype devlist-string)
    "Remove extra noise that is generated for a teminal output and format.
 
 DEVTYPE is one of the \"devlist\" possible arguments; DEVLIST-STRING
@@ -1187,7 +1212,7 @@ is the string result from invoking the command to the running Hercules."
     ))
 
 
-(defun iron-main-panels--format-dasd-list (dasdlist)
+(cl-defun iron-main-panels--format-dasd-list (dasdlist)
   "Format the string DASDLIST in columns."
   ;; Very simple minded FTTB.
   ;;
@@ -1319,7 +1344,7 @@ if needed."
 (defvar-local iron-main-panels--help-ins-pt nil)
 (defvar-local iron-main-panels--help-cmd-widget nil)
 
-(defun iron-main-panels--hercules-clean-help (helpstring)
+(cl-defun iron-main-panels--hercules-clean-help (helpstring)
   "Remove extra noise that is generated for a teminal output.
 
 The Hercules \"help\" command formats its output assuming a teminal
@@ -1494,7 +1519,7 @@ effect.  If the 'back' buffer is not live"
 	))))
 
 
-(defun iron-main-panels--invoke-panel (from panel-start-function &rest args)
+(cl-defun iron-main-panels--invoke-panel (from panel-start-function &rest args)
   "Start a new panel by calling PANEL-START-FUNCTION.
 
 The function PANEL-START-FUNCTION is one of the functions setting
