@@ -24,7 +24,7 @@
 ;; `hlasm-mode'.
 ;;
 ;; The code has been tested with MVS TK4- and MVS "Jay Moseley"
-;; build, running on a Hercules (SDL/Hyperion 4.4.x).
+;; build, running on a Hercules (SDL/Hyperion 4.4.x and 4.5.x).
 ;; Useful links follow.
 ;;
 ;; Hercules: <http://www.hercules-390.eu/>
