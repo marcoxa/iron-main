@@ -29,3 +29,8 @@ adjacent lines where the buffer gets modified.
 Got back to the package and fixed the JCL font-lock colorization.
 Still missing: comment syntax tables.
 
+## 2023-06-07
+
+New branch created to change panels.  Still unresolved: strings in JOB
+card (and possibly, anywhere in parameters).
+
