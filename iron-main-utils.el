@@ -318,7 +318,7 @@ The command is issued synchronously with a TIMEOUT (cfr.,
 
   (when (and check-listening
 	     (not (iron-main-hercules-is-listening host port)))
-    (message "IMHE002W: command %S not issued." cmd)
+    (message "IMHE002W: no Hercules connection; command %S not issued." cmd)
     (cl-return-from iron-main-hercules-cmd nil))
   
   ;; The following CGI url was desumed from Hercules HTTP
