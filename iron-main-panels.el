@@ -1205,6 +1205,9 @@ where the relevant bits and pieces used by the emulator can be found."
   )
 
 
+;; IRON MAIN System panel.
+;; -----------------------
+
 (defvar-local iron-main-panels--hs-devinfo-ins-pt nil)
 
 
@@ -1398,8 +1401,8 @@ if needed."
   )
 
 
-;; Help panel.
-;; -----------
+;; IRON MAIN Help panel.
+;; ---------------------
 
 (defvar-local iron-main-panels--help-ins-pt nil)
 (defvar-local iron-main-panels--help-cmd-widget nil)
@@ -1484,7 +1487,7 @@ if needed."
    iron-main-panels--help-cmd-widget
    (widget-create 'editable-field
 		  :size 10
-		  :format "Hercules command (empty for a list): %v"
+		  :format "Hercules command (empty for a list): %v "
 
 		  :keymap
 		  iron-main-panels-editable-field-keymap
@@ -1500,7 +1503,8 @@ if needed."
 				 iron-main-panels--help-ins-pt)
 		      )
 		    (let ((helpstring
-			    (iron-main-hercules-help (widget-value w)))
+			   (iron-main-hercules-help (widget-value w)
+						    :check-listening t))
 			  
 			  (helpstring-clean "")
 			  )
