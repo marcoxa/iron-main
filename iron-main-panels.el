@@ -1487,6 +1487,7 @@ if needed."
    iron-main-panels--help-cmd-widget
    (widget-create 'editable-field
 		  :size 10
+		  :value ""		; Initial value.
 		  :format "Hercules command (empty for a list): %v "
 
 		  :keymap
@@ -1497,40 +1498,79 @@ if needed."
 		    (ignore ignore)
 		    (if (string-equal "" (widget-value w))
 			(message "IMHS00I: Available commands... (%s)"
-			       iron-main-panels--help-ins-pt)
-		      (message "IMHS00I: Getting help for '%s' (%s)."
-				 (widget-value w)
 				 iron-main-panels--help-ins-pt)
+		      (message "IMHS00I: Getting help for '%s' (%s)."
+			       (widget-value w)
+			       iron-main-panels--help-ins-pt)
 		      )
 		    (let ((helpstring
 			   (iron-main-hercules-help (widget-value w)
 						    :check-listening t))
 			  
-			  (helpstring-clean "")
+			  ;; (helpstring-clean "")
 			  )
-		      (when helpstring
-			(when iron-main-panels--help-ins-pt
-			  ;; (message ">>> Clean helpstring.")
-			  (setq helpstring-clean
-				(iron-main-panels--hercules-clean-help
-				 helpstring)
-				)
-			  ;; (message ">>> Cleaned helpstring.")
-			  (goto-char iron-main-panels--help-ins-pt)
-			  (save-excursion
-			    (let ((inhibit-read-only t)
-				  (inhibit-modification-hooks t)
-				  )
-			      (delete-region
-			       iron-main-panels--help-ins-pt
-			       (point-max))))
+		      (with-current-buffer-window 
+		       "*IRON MAIN Hercules help display*"
+		       '(
+			 ;; display-buffer-below-selected
+			 display-buffer-in-side-window
+			 (side . bottom)
+			 (window-height . 0.75))
+		       
+		       nil		; Null QUIT-ACTION
+
+		       (cond (helpstring
+			      (insert (iron-main-panels--hercules-clean-help
+				       helpstring)
+				      ))
+			     (t
+			      (insert (format "\nHelp for %s would appear here (%s)"
+					     (widget-value w)
+					     (current-time-string)))
+			      )
+			     )
+		       
+		       (help-mode)
+		       (iron-main-mode)
+		       )))		; Lambda
+		  
+		  ;; (lambda (w &rest ignore)
+		  ;;   (ignore ignore)
+		  ;;   (if (string-equal "" (widget-value w))
+		  ;; 	(message "IMHS00I: Available commands... (%s)"
+		  ;; 	       iron-main-panels--help-ins-pt)
+		  ;;     (message "IMHS00I: Getting help for '%s' (%s)."
+		  ;; 		 (widget-value w)
+		  ;; 		 iron-main-panels--help-ins-pt)
+		  ;;     )
+		  ;;   (let ((helpstring
+		  ;; 	   (iron-main-hercules-help (widget-value w)
+		  ;; 				    :check-listening t))
+			  
+		  ;; 	  (helpstring-clean "")
+		  ;; 	  )
+		  ;;     (when helpstring
+		  ;; 	(when iron-main-panels--help-ins-pt
+		  ;; 	  ;; (message ">>> Clean helpstring.")
+		  ;; 	  (setq helpstring-clean
+		  ;; 		(iron-main-panels--hercules-clean-help
+		  ;; 		 helpstring)
+		  ;; 		)
+		  ;; 	  ;; (message ">>> Cleaned helpstring.")
+		  ;; 	  (goto-char iron-main-panels--help-ins-pt)
+		  ;; 	  (save-excursion
+		  ;; 	    (let ((inhibit-read-only t)
+		  ;; 		  (inhibit-modification-hooks t)
+		  ;; 		  )
+		  ;; 	      (delete-region
+		  ;; 	       iron-main-panels--help-ins-pt
+		  ;; 	       (point-max))))
 					 
-			  (save-excursion
-			    ;; Clean up "HHC0*I" messages before inserting.
-			    (widget-insert helpstring-clean)
-			    )))
-		      ))		; Lambda
-		  ""			; Initial value.
+		  ;; 	  (save-excursion
+		  ;; 	    ;; Clean up "HHC0*I" messages before inserting.
+		  ;; 	    (widget-insert helpstring-clean)
+		  ;; 	    )))
+		  ;;     )) ; Lambda
 		  )
    )
 	
