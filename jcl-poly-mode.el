@@ -99,6 +99,8 @@
 
 ;;; Epilogue.
 
+(add-to-list 'auto-mode-alist '("\\.jcl\\'" . jcl-poly-mode))
+
 (provide 'jcl-poly-mode)
 
 ;;; jcl-poly-mode.el ends here
