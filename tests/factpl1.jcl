@@ -6,7 +6,7 @@
 //*
 //* See file COPYING for licensing information.
 //*
-//FACTPL1 JOB (TESTPL1),'TEST FACT PL/I',
+//FACTPL1 JOB (TESTPL1),'TEST_FACT_PL/I',
 //          USER=MARCOXA,PASSWORD=XXX,
 //          CLASS=A,
 //          MSGCLASS=H,
