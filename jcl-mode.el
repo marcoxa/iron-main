@@ -77,6 +77,9 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+
+
 ;;;; JCL Mode Setup.
 
 (defgroup jcl nil
@@ -388,28 +391,48 @@ This is the port number where JCL-MODE assumes the OS is listening for
 reader requests.")
 
 
-(defun jcl-mode-submit (&optional port)
-  "Submits the buffer's content to the 'card reader' at PORT.
+(defvar-local *jcl-mode-default-os-address* "127.0.0.1"
+  "The default OS reader address.
+
+This is the IP address where JCL-MODE assumes the OS is listening for
+reader requests.  It defaults to '127.0.0.1'.")
+
+
+(cl-defun jcl-mode-submit (&optional
+			   (host  *jcl-mode-default-os-address*)
+			   (port  *jcl-mode-default-os-reader-port*)
+			   )
+  "Submits the buffer's content to the 'card reader' at PORT on HOST.
 
 The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
-'card reader'  listening on PORT.  PORT is an integer; its default is
-3505."
+'card reader' on HOST listening on PORT.  HOST is an IP address; its
+default is `*jcl-mode-default-os-address*' (i.e., \"127.0.0.1\" PORT
+is an integer; its default is `*jcl-mode-default-os-reader-port*'
+(i.e., 3505).
+
+If called inteactively with a prefix argument, the command asks for
+HOST and PORT."
   
   (interactive
-   (let ((p (read-number "JCL: card reader number/port: "
-			 *jcl-mode-default-os-reader-port*))
-	 )
-     (list p)))
+   (when current-prefix-arg
+     (let ((a (read-string "JCL: card reader host: "
+			   *jcl-mode-default-os-address*))
+           (p (read-number "JCL: card reader number/port: "
+			   *jcl-mode-default-os-reader-port*))
+	   )
+       (list a p))))
   
-  (unless port
-    (setq port *jcl-mode-default-os-reader-port*))
-  
-  (message "JCL: submitting to card reader number/port %s." port)
+  (message "JCL: submitting to host %s on card reader number/port %s."
+	   host
+	   port)
 
+  ;; The following is Good enough FTTB.  It should be made more error
+  ;; tolerant.
+  
   (let ((card-reader-stream
 	 (open-network-stream "JCL OS CARD READER"
 			      nil
-			      "127.0.0.1"
+			      host
 			      port
 			      :type 'plain
 			      ))
@@ -417,7 +440,9 @@ The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
     (unwind-protect
 	(progn
 	  (process-send-region card-reader-stream (point-min) (point-max))
-	  (message "JCL: submitted."))
+	  (message "JCL: job submitted to host %s on card reader number/port %s."
+		   host
+		   port))
       (delete-process card-reader-stream))
     ))
 
