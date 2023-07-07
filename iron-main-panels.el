@@ -129,7 +129,7 @@ The value can be either a string or a symbol.")
 
 This list contains a \"command alist\" which is a specification for
 link widgets to insert in a panel.  Each IRON MAIN panel (which is
-eventually an Emacsbuffer) can initialize this variable as it wishes.
+eventually an Emacs buffer) can initialize this variable as it wishes.
 
 The format is of a  \"command alist\" is the following:
 
@@ -1315,6 +1315,8 @@ Given a SESSION sets up the \"system\" panel.  ARGS are passed downstream
 if needed."
 
   (ignore args)
+
+  (message "IMPHS0I: %s" session)
   
   (cl-assert (iron-main-session-p session) t
 	     "SESSION %S is not a `iron-main-session'"
@@ -1359,7 +1361,7 @@ if needed."
 		     :notify
 		     (lambda (w cw &rest ignore)
 		       (ignore cw ignore)
-		       (message ">>> Pressed %s" (widget-value w))
+		       (message "IMPHS1I: pressed %s" (widget-value w))
 
 		       (let ((dev-list
 			      (iron-main-hercules-devlist (widget-value w)))
@@ -1395,7 +1397,7 @@ if needed."
     (setq-local iron-main-panels--hs-devinfo-ins-pt (point))
     )
   
-  (message "IMHS00I: Hercules system.")
+  (message "IMPHS0I: Hercules system.")
   (prog1 (widget-setup)
     (widget-forward 1))
   )
@@ -1453,7 +1455,7 @@ if needed."
   (ignore args)
   
   (cl-assert (iron-main-session-p session) t
-	     "SESSION %S is not a `iron-main-session'"
+	     "IMPHH0E: SESSION %S is not a `iron-main-session'"
 	     session)
 
   (switch-to-buffer "*IRON MAIN Hercules help*")
@@ -1577,7 +1579,7 @@ if needed."
   (widget-insert "\n")
   (setq iron-main-panels--help-ins-pt (point))
   
-  (message "IMHS00I: Hercules help.")
+  (message "IMPHH0I: Hercules help.")
   (prog1 (widget-setup)
     ;; (widget-forward 1)
     (iron-main-panels--goto-first-widget)
@@ -1608,7 +1610,7 @@ effect.  If the 'back' buffer is not live"
 		  (buffer-live-p iron-main-panels--back)))
     (when iron-main-panels--in-panel
       (when (string= iron-main-panels--tag "Top")
-	(message "IMMP02I: Exiting IRON MAIN...")
+	(message "IMPEP0I: Exiting IRON MAIN...")
 	(sleep-for 3)
 	(iron-main-session-delete iron-main-panels--session))
 
@@ -1648,7 +1650,7 @@ If PANEL-FUNCTION is NIL, this is a no-op"
 	   (iron-main-panels--get-session from)
 	   args)
 
-    (message ">>> Panel invoked; setting back to %s" from)
+    (message "IMPIP0I: panel invoked; setting back to %s" from)
     
     (setq-local iron-main-panels--back from)
     (setq-local iron-main-panels--session

@@ -247,7 +247,7 @@ More tests will be added in the future."
 					    iron-main-hercules-http-host)
 					   (herc-port
 					    iron-main-hercules-http-port))
-  "Check whether there is a HTTP-enable Hercules instance running.
+  "Check whether there is a HTTP-enabled Hercules instance running.
 
 The Hercules instance should be running on HERC-HOST listening on
 HERC-PORT.  HERC-HOST defaults to `iron-main-hercules-http-host',
