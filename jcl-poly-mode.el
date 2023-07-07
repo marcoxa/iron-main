@@ -9,7 +9,7 @@
 ;;
 ;; Created: April, 4th, 2021
 ;;
-;; Version: 20230501.1
+;; Version: 2023-06-26.1
 ;;
 ;; Keywords: languages, operating systems.
 
