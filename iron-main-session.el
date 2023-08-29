@@ -19,7 +19,9 @@
 ;;; iron-main-session
 
 (cl-defstruct (iron-main-session)
+  
   "The structure that contains the session data for IRON MAIN."
+  
   (machine iron-main-machine)
   (os-flavor iron-main-os-flavor)
   (id (gensym "iron-main-session#") :read-only t)
@@ -30,8 +32,12 @@
 
 (cl-defstruct (iron-main-hercules-session
 	       (:conc-name iron-main-hs-) ; Let's shorten the names.
-	       (:include iron-main-session))
+	       (:include iron-main-session
+			 (machine "Hercules")
+			 (os-flavor "MVS 3.8j"))
+	       )
   "IRON MAIN session data for Hercules connection."
+  
   (version iron-main-hercules-version :read-only t)
   (http-host iron-main-hercules-http-host)
   (port iron-main-hercules-http-port)
@@ -39,6 +45,8 @@
   (os-dir iron-main-hercules-os-dir)
   (dasd-dir iron-main-hercules-dasd-dir)
   (card-reader-port iron-main-hercules-card-reader-port)
+  (user "HERC01" :type string)
+  (passwd "CUL8ER")
   )
 
 
@@ -60,7 +68,7 @@
 (cl-defstruct (iron-main-mts-session
 	       (:conc-name iron-main-mts-)
 	       (:include iron-main-hercules-session
-			 (machine "IBM z")
+			 (machine "Hercules")
 			 (os-flavor "MTS"))
 	       )
   "IRON MAIN session data for connections to MTS running on Hercules."
