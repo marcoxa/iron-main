@@ -27,7 +27,8 @@
 (require 'cl-lib)
 (require 'iron-main-vars)
 (require 'iron-main-utils)
-(require 'iron-main-panels)
+;; (require 'iron-main-panels)
+(require 'iron-main-epf)
 
 
 ;;;; Hercules commands.

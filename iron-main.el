@@ -69,7 +69,8 @@ should cause the (re)compilation fo the folder.")
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 (load (expand-file-name "iron-main-utils" iron-main-path))
 (load (expand-file-name "iron-main-session" iron-main-path))
-(load (expand-file-name "iron-main-panels" iron-main-path))
+;; (load (expand-file-name "iron-main-panels" iron-main-path))
+(load (expand-file-name "iron-main-epf" iron-main-path))
 (load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
@@ -90,6 +91,8 @@ should cause the (re)compilation fo the folder.")
 
 (if iron-main--do-recompile-dir
     (byte-recompile-directory iron-main-path 0))
+
+(message "IMEL00I: Library IRON MAIN loaded.")
 
 (provide 'iron-main)
 

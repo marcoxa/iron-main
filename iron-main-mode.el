@@ -48,7 +48,8 @@
 (require 'iron-main-vars)
 (require 'iron-main-ruler-function)
 (require 'iron-main-utils)
-(require 'iron-main-panels)
+;; (require 'iron-main-panels)
+(require 'iron-main-epf)
 
 ;; (load (expand-file-name "iron-main-ruler-function" iron-main-path))
 
