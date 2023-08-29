@@ -1,0 +1,1905 @@
+;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
+;;; iron-main-epf.el --- IRON MAIN "panels" for mainframe interaction.
+
+;;; iron-main-epf.el
+;;
+;; See the file COPYING license and copyright information.
+;;
+;; Author: Marco Antoniotti <marcoxa [at] gmail.com>
+;;
+;; Created: July 20th, 2023.
+;;
+;; Version: 2023-07-20.1
+;;
+;; Keywords: languages, operating systems.
+
+;;; Commentary:
+;;
+;; This file contains the "SPF" application (Emacs PF) and panels that
+;; are used to interact with a "mainframe" (again, mostly a MVS 3.8j
+;; running on Hercules).
+;;
+;; The implementation is an interesting use (or, one should say,
+;; "abuse") of the Emacs `widget.el' library to give the "look and feel
+;; of using a "mainframe" application in... Emacs (I know: I am a pervert).
+;;
+;; To use, just issue
+;;
+;; M-x iron-main-frame
+;;
+;; The functions and variables in this file have 'iron-main-epf-' as
+;; prefix.
+;;
+;; This file was cloned from the previous `iron-main-panels.el' file.
+;; This was necessary as the wew implementation uses much more
+;; sophisticated Emacs buffer and windows handling.
+
+;;; Code:
+
+(require 'cl-lib)
+
+(eval-when-compile
+  (require 'widget)
+  (require 'wid-edit))
+
+(require 'iron-main-vars)
+(require 'iron-main-utils)
+
+
+;;; IRON MAIN SPF panels.
+;;
+;; "Panel" is mainframe-speak for "page", or in the context of Emacs,
+;; "window/buffer".
+;;
+;; The code below uses several examples of the "widget" library found
+;; in Emacs.
+
+
+;; Global variables (should be made constants).
+
+(defvar iron-main-epf--overline (make-string 72 175))
+(defvar iron-main-epf--underline (make-string 72 ?_))
+
+
+;; IRON MAIN EPF panels are mapped to buffers and windows.  A panel
+;; may have "sub" panels used for a variety of purposes, but they are
+;; mapped on windows split from the top one.
+;;
+;; Since we are mapping windows and buffers to panels (and viceversa),
+;; the state of a panel is encoded in buffer local variables.
+;; Some of these are panel spcific (see the `widget' variables for,
+;; e.g., the dataset allocation).
+
+
+;; Common variables.
+
+(defvar-local iron-main-epf--tag nil
+  "A tag that identifies the type of IRON MAIN panel.
+
+The value can be either a string or a symbol.")
+
+
+;; Navigation.
+;; These variables encode the "panels stack"; they could probably done
+;; away with by using the buffer tracking builtin facilities.
+;;
+;; Pretty crude for the time being.
+;; This just acts as a stack.  Whever a panel is "closed", the buffer
+;; is killed and the content of this variable, a buffer, if not nil
+;; and live, is restored.
+
+
+(defvar-local iron-main-epf--back nil
+  "Local panel variable set by the `invoking' panel."
+  )
+
+
+(defvar-local iron-main-epf--in-panel nil
+  "When non NIL, the buffer is an IRON MAIN panel.")
+
+
+;; Variables local to dataset handling panels.
+
+(defvar-local iron-main-epf--current-ds (make-iron-main-ds-rep))
+(defvar-local iron-main-epf--dsname-widget nil)
+
+
+;; Variables local to dataset allocation and viewing panels.
+
+(defvar-local iron-main-epf--recfm-widget nil)
+(defvar-local iron-main-epf--lrecl-widget nil)
+(defvar-local iron-main-epf--blksize-widget nil)
+(defvar-local iron-main-epf--dsorg-widget nil)
+
+(defvar-local iron-main-epf--vol-widget nil)
+(defvar-local iron-main-epf--unit-widget nil)
+
+(defvar-local iron-main-epf--space-unit-widget nil)
+(defvar-local iron-main-epf--primary-widget nil)
+(defvar-local iron-main-epf--secondary-widget nil)
+(defvar-local iron-main-epf--dir-widget nil)
+
+
+;;; IRON MAIN panel keymaps.
+
+(defvar iron-main-epf-mode-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-keymap)
+    (define-key km (kbd "<f3>") 'iron-main-epf--exit-panel)
+    (define-key km (kbd "q") 'iron-main-epf--exit-panel)
+    (define-key km (kbd "Q") 'iron-main-epf--exit-panel)
+    km
+    )
+  "The IRON MAIN Panel mode key map.
+
+The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
+'PF3'), 'q' and 'Q' exit the current panel.")
+
+
+(defvar iron-main-epf-mode-top-panel-keymap iron-main-epf-mode-keymap
+  "The IRON MAIN Panel mode key map.
+
+The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
+'PF3'), 'q' and 'Q' exit the current panel.")
+
+
+(defvar iron-main-epf-mode-sub-panel-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km iron-main-epf-mode-keymap)
+    (define-key km (kbd "<f3>") 'iron-main-epf--exit-subpanel)
+    (define-key km (kbd "q") 'iron-main-epf--exit-subpanel)
+    (define-key km (kbd "Q") 'iron-main-epf--exit-subpanel)
+    km
+    )
+  "The IRON MAIN Panel mode key map.
+
+The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
+'PF3'), 'q' and 'Q' exit the current panel.")
+
+
+(defvar iron-main-epf-editable-field-keymap
+  (let ((km (make-sparse-keymap "Iron Main Editable Field Keymap")))
+    (set-keymap-parent km widget-field-keymap)
+
+    ;; Redefine F3; the original is
+    ;; `kmacro-start-macro-or-insert-counter' from `global-map'.
+    
+    (define-key km (kbd "<f3>") 'iron-main-epf--exit-panel)
+    km
+    )
+  "The IRON MAIN Editable Field key map.
+
+The key map inherits from `widget-field-keymap'.  The key '<f3>' (that
+is, 'PF3') exits the current panel.")
+
+
+;;; Othe buffer local variables.
+
+(defvar-local iron-main-epf--cmds ()
+  "The panel command alist.
+
+This list contains a \"command alist\" which is a specification for
+link widgets to insert in a panel.  Each IRON MAIN panel (which is
+eventually an Emacs buffer) can initialize this variable as it wishes.
+
+The format is of a  \"command alist\" is the following:
+
+    (cmd function &rest keys)
+
+Where CMD is a string, FUNCTION a \"panel invocation\" function and
+KEYS a list of key-value pairs to be used for `widget-create'.
+
+See Also:
+
+`iron-main-epf--hercules-top-commands',
+`iron-main-epf--hercules-dsfs-commands'
+")
+
+
+(defvar-local iron-main-epf--cmds-links ()
+  "List of \"link\" widgets for the commands available in the panel.")
+
+
+
+;;; Widget related functions.
+;; -------------------------
+
+;; Maybe use the widget "property" functions instead in the next functions:
+;; i.e., `widget-get'.
+
+(cl-defun iron-main-epf--widget-tag (w)
+  "Get the :tag of widget W.
+
+Notes:
+
+This function is necessary because it is inexplicably absent from the
+`widget.el' library."
+  (plist-get (cdr w) :tag))
+
+
+(cl-defun iron-main-epf--widget-notify (w)
+  "Get the :notify function of widget W.
+
+Notes:
+
+This function is necessary because it is inexplicably absent from the
+`widget.el' library."
+  (plist-get (cdr w) :notify))
+
+;; In-panel navigation.
+;;
+;; The following functions *assume* that the first and last character in a
+;; panel are NOT part of a widget.
+
+(cl-defun iron-main-epf--goto-first-widget ()
+  (goto-char (point-min))
+  (widget-forward 1))
+
+
+(cl-defun iron-main-epf--goto-last-widget ()
+  (goto-char (point-max))
+  (widget-backward 1))
+
+
+;;; Commands alists.
+;; ----------------
+;;
+;; Commands alists are lists of "specifications" for link widgets to
+;; insert in a panel.
+;; Their format is:
+;;
+;;    (cmd function &rest keys)
+;;
+;; Where CMD is a string, FUNCTION a "panel invocation" function and
+;; KEYS a list of key-value pairs to be used for `widget-create'.
+
+
+;; Top commands.
+
+(defvar iron-main-epf--hercules-top-commands
+  `(("System" iron-main-epf--hercules-system
+     :header "Inspect Hercules system/machine"
+     )
+    ("Datasets" iron-main-epf--hercules-dsfs-utilities
+     :header "Handle files and datasets across systems"
+     )
+    ("Emacs PF" iron-main-epf--emacs-pf-system
+     :header "Inspect Emacs SP configuration"
+     )
+    ("Help" iron-main-epf--hercules-help
+     :header "Hercules help"
+     )
+    ("Exit"   iron-main-epf--exit-panel
+     :header "Exit the IRON MAIN current panel or top-level"
+     :notify ,(lambda (w &rest args)
+		(ignore w args)
+		(iron-main-epf--exit-panel)))
+    )
+  "A 'commands alist' for the IRON MAIN top SPF panel."
+  )
+
+
+;; DSFS commands
+
+(defvar iron-main-epf--hercules-dsfs-commands
+  `(("Allocate" iron-main-epf--dataset-allocation
+     :header "Allocate a dataset on the mainframe"
+     )
+    ("Upload" iron-main-epf--dataset-save
+     :header "Upload a local file on the mainframe"
+     )
+    ("Edit"  iron-main-epf--dataset-edit
+     :header "Edit a dataset member from the mainframe (if connected)"
+     )
+    ("Edit local"  iron-main-epf--dataset-edit-local
+     :header "Edit a local file"
+     )
+    ("Exit"   iron-main-epf--exit-panel
+     :header "Exit the IRON MAIN current panel or top-level"
+     :notify ,(lambda (w &rest args)
+		(ignore w args)
+		(iron-main-epf--exit-panel)))
+    )
+  "A 'commands alist' for the IRON MAIN dataset and filesystem panel."
+  )
+
+
+;; Commans lists functions.
+
+(cl-defun iron-main-epf--find-command (cmd commands-alist)
+  ;; (assoc cmd commands-alist 'string=)
+  (assoc cmd commands-alist) ; Older Emacsen do not accept the third arg.
+  )
+
+
+(cl-defun iron-main-epf--command-field ()
+  (widget-insert "Command")
+  (widget-create 'iron-main-natnum-widget
+                 :size 3
+                 :tag ""
+                 :value ""
+                 
+		 :validate
+		 (lambda (cmd)
+		   (<= 1 (widget-value cmd) (length iron-main-epf--cmds)))
+		 
+		 :action
+		 (lambda (cmd &optional event)
+		   (ignore event)
+		   (message ">>> notified")
+		   ;; (sleep-for 3)
+		   (let* ((cmd-widget
+			   (nth (1- (widget-value cmd))
+				iron-main-epf--cmds-links))
+			  (cmd-notify
+			   (iron-main-epf--widget-notify cmd-widget))
+			  )
+		     (message ">>> calling %s on %s"
+		      	      cmd-notify
+		     	      cmd-widget)
+		     (when cmd-notify
+		       (apply cmd-notify cmd-widget ()))
+		     ))
+                 
+		 :keymap
+		 iron-main-epf-editable-field-keymap
+		 )
+  
+  (widget-insert "\n\n")
+  )
+
+
+(cl-defun iron-main-epf--insert-command-widgets (cmd-alist)
+  (cl-loop for option in cmd-alist
+	   for opt-i from 1
+	   for header = (plist-get option :header)
+	   for notify = (plist-get option :notify)
+	   do
+	   (widget-insert (format "%3d. " opt-i))
+	   collect
+	   (widget-create 'link
+			  :format "%[%t%]\t: %v"
+			  :tag (cl-first option)
+			  :value header
+			  :button-prefix ""
+			  :button-suffix ""
+			  :notify
+			  (if notify
+			      notify
+			    (lambda (w &rest args)
+			      (ignore args)
+			      (let ((panel-function
+				     (cl-second
+				      (iron-main-epf--find-command
+				       (iron-main-epf--widget-tag w)
+				       cmd-alist)))
+				    )
+				(iron-main-epf--invoke-panel
+				 (current-buffer)
+				 panel-function)
+				))))
+	   do
+	   (widget-insert "\n")
+	   ))
+
+
+;; IRON MAIN EPF modeline.
+;; -----------------------
+
+;;; iron-main-epf--make-modeline
+
+(cl-defun iron-main-epf--make-mode-line ()
+  "Creates the (default) mode line for the IRON MAIN EPF windows."
+  
+  (identity
+   ;; format-mode-line ; just return the structure as is.
+   '(
+     ;; "ESP "
+     " "
+     mode-line-buffer-identification
+     "  "
+     mode-line-modes
+     " Use 'Q', 'q', or '<F3>' to quit"
+     )))
+
+
+(cl-defun iron-main-epf--make-header-line (&optional (title ""))
+  "Creates the (default) header line for the IRON MAIN EPF windows."
+
+  (identity
+   ;; format-mode-line ; just return the structure as is.
+   `(:propertize ,(format "IRON MAIN %s" title)
+		 ;; 'face 'fixed-pitch-serif
+		 face (
+		       ;; fixed-pitch
+		       :foreground "red"
+		       :weight bold
+		       )
+		 )))
+
+
+;; IRON MAIN EPF minor mode.
+;; -------------------------
+
+;;; iron-main-epf-mode
+;; The main mode (major) for the panels.
+
+(define-derived-mode iron-main-epf-mode nil "//IRON-MAIN"
+  "IRON MAIN Panel Mode.
+
+Major mode for IRON MAIN Panels.  Mostly a container for variables
+and a specialized keymap.
+
+You an use the function key `F3' (i.e., `PF3') or the `[Qq]' keys to
+exit a panel.  Exiting the top panel will exit the IRON MAIN
+interface.
+
+Note that `overwrite-mode' is turned on in the panels."
+
+  (setq-local iron-main-epf--in-panel t)
+  (setq-local iron-main-epf--back nil)
+
+  (overwrite-mode 42)                   ; Turn on `overwrite-mode'.
+  (use-local-map iron-main-epf-mode-keymap)
+
+  ;; Minimal header and mode lines; panels may change these.
+  
+  (setq-local header-line-format (iron-main-epf--make-header-line))
+  (setq-local mode-line-format (iron-main-epf--make-mode-line))
+  )
+
+
+;; Panels.
+;; The actual panels available.
+;; The "fields" (or "widgets") of each panel have (function) names
+;; that end in "-field" or "-widget".
+
+;; title-field
+
+(cl-defun iron-main-epf--title-field (&optional title)
+  "Create the the IRON MAIN panel title using argument TITLE."
+  
+  (unless title
+    (setq title "Top"))
+  ;; (widget-insert "\n")
+  (widget-insert (propertize (format "IRON MAIN %s\n" title)
+			     ;; 'face 'fixed-pitch-serif
+			     'face '(fixed-pitch-serif
+				     :foreground "red"
+				     :weight bold
+				     )
+			     ))
+  (widget-insert iron-main-epf--overline)	; 175 is the "overline"
+  (widget-insert "\n")
+  )
+
+
+;; help-field
+;; Unused.
+
+(cl-defun iron-main-epf--help-field ()
+  "Create the \"help\" field at the bottom of the window."
+  ;; Call last before `widget-setup'.
+
+  ;; The next one is a kludge to position the message on the "last"
+  ;; window without resorting (as I probably should) to more
+  ;; sophisticated Emacs techniques involving minibuffer-less windows
+  ;; etc.
+
+  (let ((wh (window-total-height))
+	(lc (count-lines (window-start) (window-end)))
+	(lp-current (line-number-at-pos))
+	(lp-window-end (line-number-at-pos (window-end)))
+	)
+    (cond ((>= lc wh)
+	   (move-to-window-line -1)	; Last visible line.
+	   )
+	  ((< lc wh)
+	   ;; Kludgy part: pad the buffer with newlines.
+	   (forward-line (- lp-window-end lp-current))
+	   (widget-insert (make-string (- wh lc) ?\n))
+	   (move-to-window-line -1)))
+    )
+
+  (widget-insert
+   (propertize (format "Use `[Qq]' or `PF3' to go back to previous panel.")
+	       'face '(fixed-pitch-serif :weight bold)
+	       ))
+  )
+
+
+;; Datasets and file system handling panel.
+;; ----------------------------------------
+
+(cl-defun iron-main-epf--dsname-item-field ()
+  "Create the `dsname' editable-field widget in the IRON MAIN panel."
+  (setq iron-main-epf--dsname-widget
+	(widget-create 'editable-field
+                       :size 46	   ; A name is at most 44 plus quotes.
+                       
+                       :format "Data set name: %v " ; Text after the field!
+                       
+		       :value
+                       (iron-main-ds-rep-name iron-main-epf--current-ds)
+		       ;; (iron-main-ds-rep-name iron-main-epf--current-ds)
+                       
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "DSN: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-name
+				iron-main-epf--current-ds)
+			       (widget-value w)))
+                       
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       ))
+  (widget-insert "\n")
+  (setf iron-main-epf--vol-widget
+	(widget-create 'editable-field
+                       :size 6
+		       :format "Volume serial: %v "
+                       
+		       :value
+                       (iron-main-ds-rep-vol iron-main-epf--current-ds)
+                       
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "VOL: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-vol
+				iron-main-epf--current-ds)
+			       (widget-value w)))
+                       
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+
+		       ))
+    )
+
+
+(defvar iron-main-ds-allocation-dsorg "PDS"
+  "The default data set organization (DSORG).")
+
+
+(defvar-local iron-main-epf--hercules-dsfs-cmds-links ()
+  "List of link widgets created for DSFS panel commands.")
+
+
+(cl-defun iron-main-epf--hercules-dsfs-utilities (session &rest args)
+  "Create the IRON MAIN datasets and file system utilities.
+
+The panel presents the options regarding the handling of datasets
+(files) on the connected, possibly hosted, operating system and the
+file system(s) that Emacs has direct access to; most notably, the
+\"host\" file system, say, Linux, Mac OS X or Windows."
+
+  (interactive)
+
+  (ignore args)
+  
+  (cl-assert (iron-main-session-p session) nil
+	     "SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN dataset and file system handling.*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-epf--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-epf--tag "Hercules datasets")
+  (setq-local iron-main-epf--cmds iron-main-epf--hercules-dsfs-commands)
+  
+  ;; (iron-main-epf--title-field "Dataset and file system handling panel")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line
+	       "Dataset and file system handling panel"))
+
+  (widget-insert "\n")
+
+  ;; Let's start!
+
+  (iron-main-epf--command-field)
+  
+  (setq-local iron-main-epf--cmds-links
+	      (iron-main-epf--insert-command-widgets
+	       iron-main-epf--cmds))
+
+  (message "IMHS00I: Hercules datasets and file system utilities.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;; Dataset allocation.
+;; -------------------
+
+(cl-defun iron-main-epf--dataset-allocation (session &rest args)
+  "Create the IRON MAIN dataset allocation panel."
+  
+  (interactive)
+
+  (ignore session args)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
+  (switch-to-buffer "*IRON MAIN dataset allocation*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+
+  ;; Init buffer local variables.
+  
+  (setq-local iron-main-epf--tag "Allocation panel")
+  (setq-local iron-main-epf--cmds ())
+
+  
+  ;; Let's start!
+  
+  ;; (iron-main-epf--title-field "Dataset allocation panel")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Dataset allocation panel"))
+  
+  (iron-main-epf--dsname-item-field)
+			 
+  (widget-insert "\n\n")
+
+  (setf iron-main-epf--recfm-widget
+	(widget-create 'editable-field
+		       :format "Record format (RECFM):         %v "
+		       :value (iron-main-ds-rep-recfm
+			       iron-main-epf--current-ds)
+		       :size 3
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "RECF: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-recfm
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       :help-echo "Please enter the record format: F, FB, V..."
+		       ))
+  (widget-insert "\n")
+  (message "IMPDSA1: RECFM widget created.")
+
+  (setf iron-main-epf--lrecl-widget
+	(widget-create  'iron-main-natnum-widget
+		       :format "Logical record length (LRECL): %v "
+		       :value (iron-main-ds-rep-lrecl
+			       iron-main-epf--current-ds)
+		       :size 4
+		       
+		       ;; :value-regexp "[0-9]+"
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "LRECL: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-lrecl
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       :help-echo "Please enter the record length..."
+		       ))
+  (widget-insert "\n")
+  (message "IMPDSA2: LRECL widget created.")
+
+  (setf iron-main-epf--blksize-widget
+	(widget-create  'iron-main-natnum-widget
+		       :format "Block size (BLKSIZE):          %v "
+		       :value (iron-main-ds-rep-blksize
+			       iron-main-epf--current-ds)
+		       :size 6
+		       ;; :value-regexp "[0-9]+"
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "BLKSIZE: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-blksize
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       :help-echo "Please enter the block size..."
+		       ))
+  (widget-insert "\n\n")
+  (message "IMPDSA3: BLKSIZE widget created.")
+
+  (setf iron-main-epf--vol-widget
+	(widget-create 'editable-field
+		       :format "Unit:                          %v "
+		       :value (iron-main-ds-rep-unit
+			       iron-main-epf--current-ds)
+		       :size 6
+		       :notify
+                       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "UNIT: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-unit
+				iron-main-epf--current-ds)
+			       (widget-value w)))
+                       
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       :help-echo "Please enter the unit info..."
+		       ))
+  (widget-insert "\n\n")
+  (message "IMPDSA4: UNIT widget created.")
+
+  (widget-insert "Dataset organization (DSORG): \n")
+  (setf iron-main-epf--dsorg-widget
+	(widget-create 'radio-button-choice
+		       :tag "Dataset organization (DSORG)"
+		       :doc "Dataset organization (DSORG)"
+		       ;; :value "PO"
+		       :void  "PO"
+		       :indent 4
+		       :help-echo
+                       "Please choose the dataset organization: PO, PS..."
+                       
+		       :notify
+                       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Dataset organization: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-dsorg
+				iron-main-epf--current-ds)
+			       (widget-value w)))
+                       
+		       '(item :tag "Partitioned Data Set (PO)"
+			      :value "PO")
+		       ;; '(item :tag "Partitioned Data Set Extended (PDSE)"
+		       ;;        :value "PDSE")
+		       '(item :tag "Sequential (PS)"
+			      :value "PS")
+		       ;; Add other ones.		       
+		       ))
+  (widget-insert "\n\n")
+  (message "IMPDSA5: DSORG widget created.")
+
+  (widget-insert "Space allocation:\n")
+  (setf iron-main-epf--space-unit-widget
+	(widget-create 'radio-button-choice
+		       :tag "Dataset space unit (SPACE)"
+		       ;; :value "TRK"
+		       :void  "TRK"
+		       :indent 4
+		       :help-echo "Please choose the dataset space unit..."
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "Dataset space unit: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-space-unit
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+		       '(item "TRK")
+		       '(item "CYL")
+		       '(item "BLK")
+		       ;; Add other ones.
+		       ))
+  (widget-insert "\n")
+  (message "IMPDSA6: SPACE widget created.")
+  
+  (setf iron-main-epf--primary-widget
+	(widget-create  'iron-main-natnum-widget
+		       :format "Primary: %v "
+		       :value (iron-main-ds-rep-primary
+			       iron-main-epf--current-ds)
+		       :size 8
+		       ;; :value-regexp "[0-9]+"
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "Primary: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-primary
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+		       :help-echo "Please the primary amount of space..."
+		       ))
+  (message "IMPDSA7: Primary widget created.")
+  
+  (widget-insert "    ")
+  (setf iron-main-epf--secondary-widget
+	(widget-create  'iron-main-natnum-widget
+		       :format "Secondary: %v "
+		       :value (iron-main-ds-rep-secondary
+			       iron-main-epf--current-ds)
+		       :size 8
+		       ;; :value-regexp "[0-9]+"
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "Secondary: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-secondary
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+                       
+		       :help-echo
+                       "Please the secondary amount of space..."
+		       ))
+  (message "IMPDSA8: Secondary widget created.")
+  
+  (widget-insert "    ")
+  (setf iron-main-epf--dir-widget
+	(widget-create  'iron-main-natnum-widget
+		       :format "Directory blocks: %v "
+		       :value (iron-main-ds-rep-directory
+			       iron-main-epf--current-ds)
+		       :size 4
+		       ;; :value-regexp "[0-9]+"
+		       :notify (lambda (w &rest ignore)
+				 (ignore ignore)
+				 (message "Directory blocks: <%s>."
+					  (widget-value w))
+				 (setf (iron-main-ds-rep-directory
+					iron-main-epf--current-ds)
+				       (widget-value w)))
+
+		       :keymap
+		       iron-main-epf-editable-field-keymap
+                       
+		       :help-echo
+                       "Please enter the number of directory blocks..."
+		       ))
+  (message "IMPDSA9: Directory blocks widget created.")
+
+  ;; (widget-insert "\n\n\n")
+  
+  (widget-insert "\n")
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  
+  (widget-create 'push-button
+                 :value "Allocate"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (setf (iron-main-ds-rep-name
+			  iron-main-epf--current-ds)
+			 (widget-value iron-main-epf--dsname-widget)
+				 
+			 (iron-main-ds-rep-dsorg
+			  iron-main-epf--current-ds)
+			 (widget-value iron-main-epf--dsorg-widget)
+
+			 ;; (iron-main-ds-rep-space-unit
+			 ;;  iron-main-epf--current-ds)
+			 ;; (widget-value iron-main-epf--space-unit-widget)
+			 )
+			   
+		   (message "DD %s"
+			    (iron-main-ds-to-string
+			     iron-main-epf--current-ds)
+			    ))
+                 )
+  (widget-insert "    ")
+  (widget-create 'push-button
+                 :value "View job buffer"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "JCL buffer for '%s': ...."
+			    (iron-main-ds-rep-name
+			     iron-main-epf--current-ds)
+			    ))
+		 )
+  
+  (widget-insert "    ")
+  (widget-create 'push-button
+                 :value "Allocate and Save"
+                 
+                 :notify
+                 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "Data set name: %s."
+			    (iron-main-ds-rep-name
+			     iron-main-epf--current-ds)
+			    )
+		   (iron-main-epf--dataset-save session)
+		   )
+                )
+  
+  (widget-insert "    ")
+  (widget-create 'push-button
+                 :value "Cancel"
+                 
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "Cancelled dataset '%s' mainframe allocation."
+			    (iron-main-ds-rep-name
+			     iron-main-epf--current-ds)
+			    )
+		   )
+               )
+
+  (widget-insert "\n")
+
+  (message "IMDS00I: Dataset allocation panel set up.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;; Dataset save panel.
+;; -------------------
+
+(defvar iron-main-epf--filename-widget "")
+
+(cl-defun iron-main-epf--dataset-save (session &rest args)
+  "Create the IRON MAIN dataset save panel."
+  
+  (interactive)
+
+  (ignore args session)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
+  (switch-to-buffer "*IRON MAIN dataset save*")
+  
+  (kill-all-local-variables)
+  
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+  
+  ;; (iron-main-epf--title-field "Dataset member save")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Dataset member save"))
+  
+  (iron-main-epf--dsname-item-field)
+  
+  (widget-insert "\n\n")
+  
+  (setq iron-main-epf--filename-widget
+	(widget-create 'file
+		       :format "File: %v\n"
+		       :value (iron-main-ds-rep-name
+			       iron-main-epf--current-ds)
+		       :size (- 72 (length "File: "))
+		       :keymap
+		       iron-main-epf-editable-field-keymap))
+
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  
+  (widget-create 'push-button
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "DD: <%s>."
+			    (iron-main-ds-to-string
+			     iron-main-epf--current-ds)
+			    ))		 
+                 "Save to mainframe")
+  (widget-insert "    ")
+  (widget-create 'push-button
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "JCL buffer for '%s' and '%s': ...."
+			    (iron-main-ds-rep-name
+			     iron-main-epf--current-ds)
+			    (widget-value
+			     iron-main-epf--filename-widget)
+			    ))
+                 "View job buffer")
+  (widget-insert "    ")
+  (widget-create 'push-button
+                 :notify
+		 (lambda (&rest ignore)
+		   (ignore ignore)
+		   (message "Saving dataset '%s' to mainframe cancelled."
+			    (iron-main-ds-rep-name
+			     iron-main-epf--current-ds)
+			    )
+		   )
+                 "Cancel")
+
+  (widget-insert "\n")
+
+  (message "IMDS00I: Dataset upload panel set up.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;; Dataset edit dataset member panel.
+;; ----------------------------------
+
+(cl-defun iron-main-epf--dataset-edit (session &rest args)
+  "Create the IRON MAIN dataset save panel."
+  
+  (interactive)
+
+  (ignore session args)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
+  (switch-to-buffer "*IRON MAIN dataset edit*")
+  
+  (kill-all-local-variables)
+  
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+  
+  ;; (iron-main-epf--title-field "Dataset member edit")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Dataset member edit"))
+  
+  (iron-main-epf--dsname-item-field)
+  
+  (widget-insert "\n\n")
+  
+  (setq iron-main-epf--filename-widget
+	(widget-create 'file
+		       :format "File: %v\n"
+		       :value (iron-main-ds-rep-name
+			       iron-main-epf--current-ds)
+		       :size (- 72 (length "File: "))))
+
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  
+
+  (message "IMDS00I: Dataset edit panel set up.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;; IRON MAIN frame main, top panel.
+;; --------------------------------
+
+(defvar-local iron-main-hercules-pid nil
+  "The PID of the Hercules process.  NIL if it is not running or reachable.")
+
+
+(defvar-local iron-main-epf--session nil
+  "The session a panel is attached to.")
+
+
+(cl-defun iron-main-epf--get-session (panel)
+  "Get the IRON MAIN session attached to PANEL.
+
+PANEL must be a buffer or a buffer name."
+  (with-current-buffer panel
+    iron-main-epf--session))
+
+
+(defvar-local iron-main-epf--hercules-top-cmds-links ()
+  "List of link widgets created for top panel commands.")
+
+
+(cl-defun iron-main-frame (&optional
+			   (machine iron-main-machine)
+			   (os-flavor iron-main-os-flavor))
+  "Create the 'top' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
+
+Notes:
+
+This function is an alias for `iron-main-frame-panel'.
+
+See Also:
+
+IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
+  
+  (interactive)
+  (iron-main-frame-panel machine os-flavor))
+
+
+(defalias 'iron-main-epf 'iron-main-frame)
+
+
+(defalias 'iron-main-frame-epf 'iron-main-frame)
+
+
+(cl-defun iron-main-frame-panel (&optional
+				 (machine iron-main-machine)
+				 (os-flavor iron-main-os-flavor)
+				 &aux
+				 (from-buffer (current-buffer))
+				 (instance-banner "")
+				 )
+  "Create the 'top' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
+  
+  (interactive)
+
+  (switch-to-buffer
+   (format "*IRON MAIN %s - %s*"
+	   iron-main-machine
+	   iron-main-os-flavor))
+  
+  (kill-all-local-variables)
+  
+  ;; (make-local-variable 'panel-iron-main-repeat)
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+
+  ;; Init buffer local variables.
+
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Top"))
+  
+  (setq-local iron-main-machine machine)
+  (setq-local iron-main-os-flavor os-flavor)
+  (setq-local iron-main-epf--back from-buffer)
+  (setq-local iron-main-epf--tag "Top")
+  (setq-local iron-main-epf--cmds
+	      iron-main-epf--hercules-top-commands)
+  
+  (when (iron-main-running-machine "Hercules")
+    ;; Trying to get the PID.
+    ;; All of this should be factored out and make machine/os dependent.
+    (let ((pid (progn
+		 (message "IMFPF01I: Hercules running; getting PID.")
+		 (iron-main-hercules-qpid)))
+	  (session
+	   (iron-main-session-start 'iron-main-hercules-session))
+	  )
+      (setq-local iron-main-hercules-pid pid)
+      (setq-local iron-main-epf--session session)
+
+      (if pid
+	  (setf (iron-main-hs-pid session)
+		pid
+		
+		instance-banner
+		(format "%s running %s on %s:%s (%s) from %s"
+			iron-main-machine
+			iron-main-os-flavor
+			iron-main-hercules-http-host
+			iron-main-hercules-http-port
+			pid
+			(system-name)))
+	(setf instance-banner
+	      (format "%s running %s not available from %s"
+		      iron-main-machine
+		      iron-main-os-flavor
+		      (system-name)))
+	)
+
+      ;; Setting the Hercules OS directories.
+      ;; Most setups (e.g., tk4- and Jay Moseleys's) assume a
+      ;; directory where the OS resides, with a "dasd" subdirectory.
+
+      (let ((os-dir
+	     (read-directory-name (format
+				   "IRON MAIN: %S resident folder: "
+				   iron-main-os-flavor)
+				  nil
+				  nil
+				  t))
+	    )
+	(when (file-exists-p
+	       (file-name-as-directory
+		(expand-file-name os-dir)))
+	  (setq-local iron-main-hercules-os-dir
+		      (file-name-as-directory
+		       (expand-file-name os-dir)))
+	  (setf (iron-main-hs-os-dir session)
+		iron-main-hercules-os-dir))
+	
+	)
+      (let ((dasd-dir
+	     (read-directory-name (format
+				   "IRON MAIN: %S DASD folder: "
+				   iron-main-os-flavor)
+				  iron-main-hercules-os-dir
+				  nil
+				  t
+				  "dasd"))
+	    )
+	(when (file-exists-p
+	       (file-name-as-directory
+		(expand-file-name dasd-dir)))
+	  (setq-local iron-main-hercules-dasd-dir
+		      (file-name-as-directory
+		       (expand-file-name dasd-dir)))
+	  (setf (iron-main-hs-dasd-dir session)
+		iron-main-hercules-dasd-dir))
+	
+	)
+      ))
+
+  ;; Not running Hercules.
+  (when (not (iron-main-running-machine "Hercules"))
+    (message "IMFPF02I: Hercules not running.")
+    (setf instance-banner
+	  (format "%s running %s not available"
+		  iron-main-machine
+		  iron-main-os-flavor))
+    )
+
+  ;; Let's start!
+  
+  ;; (iron-main-epf--title-field)		; This will become useless.
+  
+  (when (iron-main-running-machine "Hercules")
+
+    ;; (iron-main-epf--hercules-top-subpanel
+    ;;  iron-main-hercules-os-dir
+    ;;  iron-main-hercules-dasd-dir)
+
+    (widget-insert "\n")
+    (iron-main-epf--command-field)
+  
+    (setq-local iron-main-epf--cmds-links
+		(iron-main-epf--insert-command-widgets
+		 iron-main-epf--cmds))
+    )
+  (widget-insert "\n\n")
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  (widget-insert instance-banner)
+  (widget-insert "\n")
+
+
+  ;; (iron-main-help-field) ; Not yet.
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  (message "IMFPF00I: My Emacs thinks it's an ISPF!")
+  )
+
+
+(cl-defun iron-main-epf--hercules-top-subpanel
+    (&optional (os-dir iron-main-hercules-os-dir)
+               (dasd-dir iron-main-hercules-dasd-dir))
+                                                    
+  "Internal function setting up the Hercules part of the top panel.
+
+The arguments OS-DIR and DASD-DIR are referring to the directories
+where the relevant bits and pieces used by the emulator can be found."
+
+  ;; This function is just a code organization/refactoring tool.   Do
+  ;; not call by itself.
+
+  ;; (widget-insert "OS   ")
+  (widget-create 'directory
+		 :value os-dir
+		 :tag "OS   "
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-os-dir)
+		 ;; :format "%v"
+		 ;; :entry-format "V %v"
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size (+ 4
+			  (max (length os-dir)
+			       (length dasd-dir))))
+  (widget-insert "\n")
+  ;; (widget-insert "DASDs")
+  (widget-create 'directory
+		 :value dasd-dir
+		 :tag "DASDs"
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-dasd-dir)
+		 ;; :format "%v"
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size (+ 4
+			  (max (length os-dir)
+			       (length dasd-dir))))
+  (widget-insert "\n\n")
+  (widget-insert iron-main-epf--overline)
+  (widget-insert "\n")
+  )
+
+
+;; IRON MAIN System panel.
+;; -----------------------
+
+(defvar-local iron-main-epf--hs-devinfo-ins-pt nil)
+
+
+(cl-defun iron-main-epf--hercules-clean-devlist (devtype devlist-string)
+   "Remove extra noise that is generated for a teminal output and format.
+
+DEVTYPE is one of the \"devlist\" possible arguments; DEVLIST-STRING
+is the string result from invoking the command to the running Hercules."
+
+  ;; To understand this processing, check the output of the Hercules
+  ;; command "devlist DEVTYPE".
+
+  ;; Readability first!!!
+  (let ((result "")
+	)
+    ;; Remove information header.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC0160[23]I +devlist.*$"
+	   ""
+	   devlist-string))
+    ;; Remove extra message for empty lists.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC00007I.+$"
+	   ""
+	   result))
+
+    ;; Remove "Empty list" mgs type.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC02312W "
+	   ""
+	   result))
+
+    ;; Remove list lines msg type.
+    (setq result
+	  (replace-regexp-in-string
+	   "HHC02279I "
+	   ""
+	   result))
+
+    ;; Remove blank lines (if it works).
+    (setq result
+	  (replace-regexp-in-string (rx bol ?\n)
+				    ""
+				    result))
+
+    ;; Now we format depending on `devtype'
+    (cond ((string-equal devtype "DASD")
+	   (message "IMHSP2I: formatting DASD list.")
+	   (setq result
+		 (iron-main-epf--format-dasd-list result))
+	   )
+	  (t
+	   ;; Noting fttb
+	   (message "IMHSP2I: formatting %s list." devtype)
+	   (setq result
+		 (format "Available %ss.\n\n%s"
+			 devtype
+			 result))
+	   )
+	  )
+    result
+    ))
+
+
+(cl-defun iron-main-epf--format-dasd-list (dasdlist)
+  "Format the string DASDLIST in columns."
+  ;; Very simple minded FTTB.
+  ;;
+  ;; `dasdlist' is a string with lines like:
+  ;;
+  ;; 0:0133 2314 dasd/sort03.133 [203 cyls] [0 sfs] IO[23] open
+  ;; 0:0134 2314 dasd/sort04.134 [203 cyls] [0 sfs] IO[23] open
+  ;;
+  ;; where the 7 columns are:
+  ;;
+  ;; DEVID MODEL HOSTFOLDER CYL SFS IO(channels?) STATUS
+
+  (let ((result "")
+	;; I should rewrite the next regexp breaking it up and using
+	;; RX.
+	(col-regexp
+	 "\\([:0-9A-Z]+\\) \\([0-9]+\\) \\(.+\\) \\(\\[[^]]+?\\]\\) \\(\\[[^]]+?\\]\\) \\(IO\\[[^]]+?\\]\\) \\(.+\\)")
+	(result-regexp
+	 "\\1\t\\2\t\\3\t\\4\t\\5\t\\6\t\\7")
+	)
+    (setf result
+	  (replace-regexp-in-string col-regexp
+				    result-regexp
+				    dasdlist))
+    
+    ;; Not quite right yet, but gettng there...
+    (format "%s\n%s"
+	    "DEVID\tMODEL\tHOST FOLDER\tCYL\tSFS\tIO(channels)\tSTATUS"
+	    result)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-system (session &rest args)
+  "Hercules system inspection panel.
+
+Given a SESSION sets up the \"system\" panel.  ARGS are passed downstream
+if needed."
+
+  (ignore args)
+
+  (message "IMPHS0I: %s" session)
+  
+  (cl-assert (iron-main-session-p session) t
+	     "SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN Hercules system*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-epf--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-epf--tag "Hercules system")
+  
+  ;; (iron-main-epf--title-field "Hercules system")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Hercules system"))
+
+  ;; Let's start!
+
+  ;; Devices retrievable from the Hercules command 'devlist'.
+  ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
+
+  (let ((devtypes
+	 (list "CTCA" "DASD" "DSP" "FCP" "LINE" "OSA" "PCH" "PRT"
+	       "RDR" "TAPE"))
+	)
+  
+    (widget-insert "Available devices\n\n")
+
+    (dolist (devtype devtypes)
+      (widget-create 'push-button
+		     :notify
+		     (lambda (w cw &rest ignore)
+		       (ignore cw ignore)
+		       (message "IMPHS1I: pressed %s" (widget-value w))
+
+		       (let ((dev-list
+			      (iron-main-hercules-devlist (widget-value w)))
+			  
+			     (dev-list-clean "")
+			     )
+			 (when dev-list
+			   (when iron-main-epf--hs-devinfo-ins-pt
+			     ;; (message ">>> Clean %s devlist." (widget-value w))
+			     (setq dev-list-clean
+				   (iron-main-epf--hercules-clean-devlist
+				    (widget-value w)
+				    dev-list))
+			     ;; (message ">>> Cleaned helpstring.")
+			     (goto-char iron-main-epf--hs-devinfo-ins-pt)
+			     (save-excursion
+			       (let ((inhibit-read-only t)
+				     (inhibit-modification-hooks t)
+				     )
+				 (delete-region
+				  iron-main-epf--hs-devinfo-ins-pt
+			    	  (point-max))))
+					 
+			     (save-excursion
+			       ;; Clean up "HHC0*I" messages before inserting.
+			       (widget-insert dev-list-clean)
+			       )))
+			 ))
+		     devtype)
+      (widget-insert "  "))
+
+    (widget-insert "\n\n")
+    (setq-local iron-main-epf--hs-devinfo-ins-pt (point))
+    )
+  
+  (message "IMPHS0I: Hercules system.")
+  (prog1 (widget-setup)
+    (widget-forward 1))
+  )
+
+
+;; IRON MAIN Emacs SP panel.
+;; -------------------------
+
+(cl-defun iron-main-epf--emacs-hercules-subpanel
+    (session &aux
+	     (os-dir (iron-main-hs-os-dir session))
+             (dasd-dir (iron-main-hs-dasd-dir session))
+	     (hercules-pid (iron-main-hs-pid session))
+	     )
+                                                    
+  "Sets up the Hercules part of the Emacs PF panel.
+
+The arguments OS-DIR and DASD-DIR are referring to the directories
+where the relevant bits and pieces used by the emulator can be found.
+HERCULES-PID is the emulator process id or NIL if none is running."
+
+  ;; This function is just a code organization/refactoring tool.   Do
+  ;; not call by itself.
+
+  (widget-insert "\n")
+  (if hercules-pid
+      ;; We have an Hercules running?
+      (widget-insert (format "Hercules process id: %s\n"
+			     hercules-pid))
+    (widget-insert "No Hercules process running\n"))
+  (widget-insert "\n")
+   
+  (widget-insert "OS folder:\n")
+  (widget-create 'directory
+		 :value os-dir
+		 ;; :tag "OS   "
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-os-dir)
+		 ;; :format "%v"
+		 ;; :entry-format "V %v"
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size (+ 4
+			  (max (length os-dir)
+			       (length dasd-dir))))
+  (widget-insert "\n\n")
+  (widget-insert "DASDs:\n")
+  (widget-create 'directory
+		 :value dasd-dir
+		 ;; :tag "DASDs"
+		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-dasd-dir)
+		 ;; :format "%v"
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size (+ 4
+			  (max (length os-dir)
+			       (length dasd-dir))))
+  (widget-insert "\n\n")
+  )
+
+
+(cl-defun iron-main-epf--emacs-pf-system (session &rest args)
+  "Emacs PF system ispection panel.
+
+Given a SESSION shows information about the current Emacs SP
+connection to the mainframe, if any."
+
+  (ignore args)
+  
+  (cl-assert (iron-main-session-p session) t
+	     "IMFEP0E: SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN Emacs PF*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+  
+  (iron-main-epf-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-epf--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-epf--tag "IRON MAIN Emacs PF")
+  
+  ;; (iron-main-epf--title-field "Hercules help")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Emacs PF"))
+
+  (iron-main-epf--emacs-hercules-subpanel session)
+
+  (message "IMFEPE0I: Emacs PF panel.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+;; IRON MAIN Help panel.
+;; ---------------------
+
+(defvar-local iron-main-epf--help-ins-pt nil)
+(defvar-local iron-main-epf--help-cmd-widget nil)
+
+(cl-defun iron-main-epf--hercules-clean-help (helpstring)
+  "Remove extra noise that is generated for a teminal output.
+
+The Hercules \"help\" command formats its output assuming a teminal
+output; HELPSTRING contains such output and is cleaned up for
+presentation in the IRON MAIN panel/buffer."
+
+  ;; To understand this processing, check the output of the Hercules
+  ;; commands "help" and "help <cmd>".
+
+  ;; Readability first!!!
+  (let ((result ""))
+    ;; Remove line headers.
+    (setf result
+	  (replace-regexp-in-string
+	   "HHC0160[23]I "
+	   ""
+	   helpstring))
+
+    ;; Remove header line.
+    (setf result
+	  (replace-regexp-in-string
+	   "^help *[a-zA-Z0-9]*$"
+	   ""
+	   result))
+
+    ;; Remove extra help line in "help" result.
+    (setf result
+	  (replace-regexp-in-string
+	   "^HHC01610I .+$"
+	   ""
+	   result))
+    
+    result
+  ))
+
+
+(cl-defun iron-main-epf--hercules-help (session &rest args)
+  "Hercules help panel.
+
+Given a SESSION sets up the \"help\" panel.  ARGS are passed downstream
+if needed."
+
+  (ignore args)
+  
+  (cl-assert (iron-main-session-p session) t
+	     "IMPHH0E: SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer "*IRON MAIN Hercules help*")
+
+  (kill-all-local-variables)
+
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+  
+  (iron-main-epf-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-epf--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-epf--tag "Hercules help")
+  
+  ;; (iron-main-epf--title-field "Hercules help")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Hercules help"))
+
+  ;; Let's start!
+
+  (setq-local iron-main-epf--help-ins-pt (point))
+
+  ;; (message ">>> Point %s" help-ins-pt)
+  (setq-local
+   iron-main-epf--help-cmd-widget
+   (widget-create 'editable-field
+		  :size 10
+		  :value ""		; Initial value.
+		  :format "Hercules command (empty for a list): %v "
+
+		  :keymap
+		  iron-main-epf-editable-field-keymap
+
+		  :action
+		  (lambda (w &rest ignore)
+		    (ignore ignore)
+		    (if (string-equal "" (widget-value w))
+			(message "IMHS00I: Available commands... (%s)"
+				 iron-main-epf--help-ins-pt)
+		      (message "IMHS00I: Getting help for '%s' (%s)."
+			       (widget-value w)
+			       iron-main-epf--help-ins-pt)
+		      )
+		    (let ((helpstring
+			   (iron-main-hercules-help (widget-value w)
+						    :check-listening t))
+			  
+			  ;; (helpstring-clean "")
+			  )
+		      (with-current-buffer-window 
+		       "*IRON MAIN Hercules help display*"
+		       '(
+			 ;; display-buffer-below-selected
+			 display-buffer-in-side-window
+			 (side . bottom)
+			 (window-height . 0.75)
+			 )
+		       
+		       nil		; Null QUIT-ACTION
+
+		       (cond (helpstring
+			      (insert (iron-main-epf--hercules-clean-help
+				       helpstring)
+				      ))
+			     (t
+			      (insert (format "\nHelp for %s would appear here (%s)"
+					     (widget-value w)
+					     (current-time-string)))
+			      )
+			     )
+		       
+		       (help-mode)
+		       (iron-main-mode)
+		       )))		; Lambda
+		  
+		  ;; (lambda (w &rest ignore)
+		  ;;   (ignore ignore)
+		  ;;   (if (string-equal "" (widget-value w))
+		  ;; 	(message "IMHS00I: Available commands... (%s)"
+		  ;; 	       iron-main-epf--help-ins-pt)
+		  ;;     (message "IMHS00I: Getting help for '%s' (%s)."
+		  ;; 		 (widget-value w)
+		  ;; 		 iron-main-epf--help-ins-pt)
+		  ;;     )
+		  ;;   (let ((helpstring
+		  ;; 	   (iron-main-hercules-help (widget-value w)
+		  ;; 				    :check-listening t))
+			  
+		  ;; 	  (helpstring-clean "")
+		  ;; 	  )
+		  ;;     (when helpstring
+		  ;; 	(when iron-main-epf--help-ins-pt
+		  ;; 	  ;; (message ">>> Clean helpstring.")
+		  ;; 	  (setq helpstring-clean
+		  ;; 		(iron-main-epf--hercules-clean-help
+		  ;; 		 helpstring)
+		  ;; 		)
+		  ;; 	  ;; (message ">>> Cleaned helpstring.")
+		  ;; 	  (goto-char iron-main-epf--help-ins-pt)
+		  ;; 	  (save-excursion
+		  ;; 	    (let ((inhibit-read-only t)
+		  ;; 		  (inhibit-modification-hooks t)
+		  ;; 		  )
+		  ;; 	      (delete-region
+		  ;; 	       iron-main-epf--help-ins-pt
+		  ;; 	       (point-max))))
+					 
+		  ;; 	  (save-excursion
+		  ;; 	    ;; Clean up "HHC0*I" messages before inserting.
+		  ;; 	    (widget-insert helpstring-clean)
+		  ;; 	    )))
+		  ;;     )) ; Lambda
+		  )
+   )
+	
+  (widget-insert "\n")
+  (setq iron-main-epf--help-ins-pt (point))
+  
+  (message "IMPHH0I: Hercules help.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;;; Panel navigation.
+;;; =================
+
+(cl-defun iron-main-epf--exit-panel (&optional
+					(panel-to-exit (current-buffer)))
+  "Exit the current panel 'popping' the 'stack' of panels.
+
+PANEL-TO-EXIT is the panel to exit, defaulting to the current buffer.
+If PANEL-TO-EXIT is not an IRON-MAIN panel, then this function has no
+effect.  If the 'back' buffer is not live"
+
+  (interactive)
+
+  (message "IMFP01I Exiting %S" panel-to-exit)
+  (with-current-buffer panel-to-exit
+    (message ">>> in-panel %S, panel-tag %S, back %S, live %S"
+	     iron-main-epf--in-panel
+	     iron-main-epf--tag
+	     iron-main-epf--back
+	     (and (bufferp iron-main-epf--back)
+		  (buffer-live-p iron-main-epf--back)))
+    (when iron-main-epf--in-panel
+      (when (string= iron-main-epf--tag "Top")
+	(message "IMFP00I: Exiting IRON MAIN...")
+	(sleep-for 3)
+	(iron-main-session-delete iron-main-epf--session)
+	(message "IMFP00I: IRON MAIN exited."))
+
+      ;; Order of `switch-to-buffer' and `kill-buffer' is important.
+      (if (and (bufferp iron-main-epf--back)
+	       (buffer-live-p iron-main-epf--back))
+	  (progn
+	    (switch-to-buffer iron-main-epf--back nil t)
+	    (kill-buffer panel-to-exit))
+	(progn
+	  ;; iron-main-epf-back not a buffer or not live.
+	  (switch-to-buffer nil)
+	  (kill-buffer panel-to-exit))
+	))))
+
+
+(cl-defun iron-main-epf--invoke-panel
+    (from panel-start-function &rest args)
+  "Start a new panel by calling PANEL-START-FUNCTION.
+
+The function PANEL-START-FUNCTION is one of the functions setting
+up a panel; it is called by applying it to the session attached
+to FROM and ARGS.  After calling the PANEL-START-FUNCTION,
+`iron-main-epf--invoke-panel' assumes that Emacs has switched
+to a new panel/buffer and it sets the buffer local variable
+`iron-main-epf-back' variable to FROM (which should be a
+panel/buffer itself.
+
+The function returns a list containing two items: the current
+buffer (which should be the buffer associated to the panel
+created by PANEL-START-FUNCTION, and FROM.
+
+If PANEL-FUNCTION is NIL, this is a no-op"
+  
+  (when panel-start-function
+    (apply panel-start-function
+	   (iron-main-epf--get-session from)
+	   args)
+
+    (message "IMPIP0I: panel invoked; setting back to %s" from)
+    
+    (setq-local iron-main-epf--back from)
+    (setq-local iron-main-epf--session
+		(iron-main-epf--get-session from))
+    (list (current-buffer) from))
+  )
+
+
+;;; Epilogue
+
+(provide 'iron-main-epf)
+
+;;; iron-main-epf.el ends here
