@@ -44,6 +44,7 @@
 
 (require 'iron-main-vars)
 (require 'iron-main-utils)
+(require 'iron-main-jcl-templates)
 
 
 ;;; IRON MAIN SPF panels.
@@ -132,20 +133,25 @@ The value can be either a string or a symbol.")
     )
   "The IRON MAIN Panel mode key map.
 
-The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
-'PF3'), 'q' and 'Q' exit the current panel.")
+The key map inherits from `widget-keymap'.
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
+panel or the whole IRON MAIN panel system.")
 
 
 (defvar iron-main-epf-mode-top-panel-keymap iron-main-epf-mode-keymap
   "The IRON MAIN Panel mode key map.
 
-The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
-'PF3'), 'q' and 'Q' exit the current panel.")
+The key map inherits from `widget-keymap'.
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
+panel."
+  )
 
 
 (defvar iron-main-epf-mode-sub-panel-keymap
   (let ((km (make-sparse-keymap)))
     (set-keymap-parent km iron-main-epf-mode-keymap)
+
+    ;; Redefine "exit" keys...
     (define-key km (kbd "<f3>") 'iron-main-epf--exit-subpanel)
     (define-key km (kbd "q") 'iron-main-epf--exit-subpanel)
     (define-key km (kbd "Q") 'iron-main-epf--exit-subpanel)
@@ -153,8 +159,10 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
     )
   "The IRON MAIN Panel mode key map.
 
-The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
-'PF3'), 'q' and 'Q' exit the current panel.")
+The key map inherits from `widget-keymap'.
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
+panel."
+  )
 
 
 (defvar iron-main-epf-editable-field-keymap
@@ -169,8 +177,8 @@ The key map inherits from `widget-keymap'.  The keys '<f3>' (that is,
     )
   "The IRON MAIN Editable Field key map.
 
-The key map inherits from `widget-field-keymap'.  The key '<f3>' (that
-is, 'PF3') exits the current panel.")
+The key map inherits from `widget-field-keymap'.
+The key \\='<f3>\\=' (that is, \\='PF3\\=') exits the current panel.")
 
 
 ;;; Othe buffer local variables.
@@ -275,7 +283,7 @@ This function is necessary because it is inexplicably absent from the
 		(ignore w args)
 		(iron-main-epf--exit-panel)))
     )
-  "A 'commands alist' for the IRON MAIN top SPF panel."
+  "A \\='commands alist\\=' for the IRON MAIN top SPF panel."
   )
 
 
@@ -300,7 +308,7 @@ This function is necessary because it is inexplicably absent from the
 		(ignore w args)
 		(iron-main-epf--exit-panel)))
     )
-  "A 'commands alist' for the IRON MAIN dataset and filesystem panel."
+  "A \\='commands alist\\=' for the IRON MAIN dataset and filesystem panel."
   )
 
 
@@ -388,18 +396,20 @@ This function is necessary because it is inexplicably absent from the
 
 ;;; iron-main-epf--make-modeline
 
-(cl-defun iron-main-epf--make-mode-line ()
+(cl-defun iron-main-epf--make-mode-line (&optional
+					 (extra-info " Use 'Q', 'q', or '<F3>' to quit")
+					 )
   "Creates the (default) mode line for the IRON MAIN EPF windows."
   
   (identity
    ;; format-mode-line ; just return the structure as is.
-   '(
+   `(
      ;; "ESP "
      " "
      mode-line-buffer-identification
      "  "
      mode-line-modes
-     " Use 'Q', 'q', or '<F3>' to quit"
+     ,extra-info
      )))
 
 
@@ -780,7 +790,8 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;;        :value "PDSE")
 		       '(item :tag "Sequential (PS)"
 			      :value "PS")
-		       ;; Add other ones.		       
+		       
+		       ;; Add other ones later...		       
 		       ))
   (widget-insert "\n\n")
   (message "IMPDSA5: DSORG widget created.")
@@ -913,10 +924,16 @@ file system(s) that Emacs has direct access to; most notably, the
                  :notify
                  (lambda (&rest ignore)
 		   (ignore ignore)
-		   (message "JCL buffer for '%s': ...."
-			    (iron-main-ds-rep-name
-			     iron-main-epf--current-ds)
-			    ))
+		   (let ((dsname
+			  (iron-main-ds-rep-name
+			   iron-main-epf--current-ds))
+			 )
+		     (message "JCL buffer for '%s': ...."
+			      dsname
+			      )
+		     (iron-main-jcl-tmpl--allocation-job
+		      (format "%s.jcl" dsname))
+		     ))
 		 )
   
   (widget-insert "    ")
@@ -941,6 +958,7 @@ file system(s) that Emacs has direct access to; most notably, the
                  :notify
 		 (lambda (&rest ignore)
 		   (ignore ignore)
+		   (iron-main-epf--exit-panel)
 		   (message "Cancelled dataset '%s' mainframe allocation."
 			    (iron-main-ds-rep-name
 			     iron-main-epf--current-ds)
@@ -1014,27 +1032,45 @@ file system(s) that Emacs has direct access to; most notably, the
                  "Save to mainframe")
   (widget-insert "    ")
   (widget-create 'push-button
+		 :value "View job buffer"
+
                  :notify
 		 (lambda (&rest ignore)
 		   (ignore ignore)
-		   (message "JCL buffer for '%s' and '%s': ...."
-			    (iron-main-ds-rep-name
-			     iron-main-epf--current-ds)
-			    (widget-value
-			     iron-main-epf--filename-widget)
-			    ))
-                 "View job buffer")
+		   (let ((dsname
+			  (iron-main-ds-rep-name
+			   iron-main-epf--current-ds))
+			 )
+		     (message "JCL buffer for '%s': ...."
+			      dsname
+			      )
+		     (iron-main-jcl-tmpl--allocation-job
+		      (format "%s.jcl" dsname))
+		     ))
+		 
+		 ;; (lambda (&rest ignore)
+		 ;;   (ignore ignore)
+		 ;;   (message "JCL buffer for '%s' and '%s': ...."
+		 ;; 	    (iron-main-ds-rep-name
+		 ;; 	     iron-main-epf--current-ds)
+		 ;; 	    (widget-value
+		 ;; 	     iron-main-epf--filename-widget)
+
+		 )
   (widget-insert "    ")
   (widget-create 'push-button
+		 :value "Cancel"
+
                  :notify
 		 (lambda (&rest ignore)
 		   (ignore ignore)
+		   (iron-main-epf--exit-panel)
 		   (message "Saving dataset '%s' to mainframe cancelled."
 			    (iron-main-ds-rep-name
 			     iron-main-epf--current-ds)
 			    )
 		   )
-                 "Cancel")
+		 )
 
   (widget-insert "\n")
 
@@ -1082,13 +1118,75 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :format "File: %v\n"
 		       :value (iron-main-ds-rep-name
 			       iron-main-epf--current-ds)
-		       :size (- 72 (length "File: "))))
+		       :size (- 72 (length "File: "))
+		       :keymap iron-main-epf-editable-field-keymap))
 
   (widget-insert iron-main-epf--underline)
   (widget-insert "\n")
   
 
   (message "IMDS00I: Dataset edit panel set up.")
+  (prog1 (widget-setup)
+    ;; (widget-forward 1)
+    (iron-main-epf--goto-first-widget)
+    )
+  )
+
+
+;; Dataset edit local file as dataset member panel.
+;; ------------------------------------------------
+
+(cl-defun iron-main-epf--dataset-edit-local (session &rest args)
+  "Create the IRON MAIN dataset save panel."
+  
+  (interactive)
+
+  (ignore session args)
+
+  ;; (cl-assert (iron-main-session-p session) t
+  ;; 	     "SESSION %S is not a `iron-main-session'"
+  ;; 	     session)
+  
+  (switch-to-buffer "*IRON MAIN dataset edit*")
+  
+  (kill-all-local-variables)
+  
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+  
+  ;; (iron-main-epf--title-field "Dataset member edit")
+  (setq-local header-line-format
+	      (iron-main-epf--make-header-line "Local dataset member (file) edit"))
+  
+  ;; (iron-main-epf--dsname-item-field)
+  
+  (widget-insert "\n")
+  
+  (setq iron-main-epf--filename-widget
+	(widget-create 'file
+		       :format "File: %v\n"
+		       :value (iron-main-ds-rep-name
+			       iron-main-epf--current-ds)
+		       :size (- 72 (length "File: "))
+		       :keymap iron-main-epf-editable-field-keymap
+		       ;; :notify
+		       :action (lambda (w &rest args)
+				 (ignore args)
+				 (message
+				  (format "FILE -- %s"
+					  (widget-value w)))
+				 (find-file (widget-value w))
+				 )
+		       :keymap iron-main-epf-editable-field-keymap
+		       ))
+
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  
+
+  (message "IMDS01I: Local dataset edit panel set up.")
   (prog1 (widget-setup)
     ;; (widget-forward 1)
     (iron-main-epf--goto-first-widget)
@@ -1122,7 +1220,7 @@ PANEL must be a buffer or a buffer name."
 (cl-defun iron-main-frame (&optional
 			   (machine iron-main-machine)
 			   (os-flavor iron-main-os-flavor))
-  "Create the 'top' IRON MAIN panel.
+  "Creates the \\='top\\=' IRON MAIN panel.
 
 The optional MACHINE and OS-FLAVOR arguments default to the values of
 the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
@@ -1152,7 +1250,7 @@ IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 				 (from-buffer (current-buffer))
 				 (instance-banner "")
 				 )
-  "Create the 'top' IRON MAIN panel.
+  "Create the \\='top\\=' IRON MAIN panel.
 
 The optional MACHINE and OS-FLAVOR arguments default to the values of
 the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
@@ -1830,11 +1928,11 @@ if needed."
 
 (cl-defun iron-main-epf--exit-panel (&optional
 					(panel-to-exit (current-buffer)))
-  "Exit the current panel 'popping' the 'stack' of panels.
+  "Exit the current panel \\='popping\\=' the \\='stack\\=' of panels.
 
 PANEL-TO-EXIT is the panel to exit, defaulting to the current buffer.
 If PANEL-TO-EXIT is not an IRON-MAIN panel, then this function has no
-effect.  If the 'back' buffer is not live"
+effect.  If the \\='back\\=' buffer is not live"
 
   (interactive)
 
