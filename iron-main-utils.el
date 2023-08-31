@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 17th, 2020.
 ;;
-;; Version: 20230504.1
+;; Version: 20230831.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -73,52 +73,6 @@
   (directory 0 :type string)
   ;; ..
   )
-
-
-(defun iron-main--split-pathname (pathname)
-  "Splits a pathname (Un*x or Windows) on the directory separators."
-  (if (stringp pathname)
-      (split-string pathname "[\\/]" t)
-    (error "PATHNAME %s is not a string" pathname)))
-
-
-(cl-defun iron-main--join-by (sl &optional (sep "") enclose)
-  "Joins strings.
-
-The function takes a list of objects (SL) and PRINCs them to a string
-that is eventually returned.  The separator SEP (a string) is used
-between each element of the list SL.
-
-ENCLOSE can be T, the keyword :LEFT, :RIGHT, or :BOTH.  If T or :BOTH,
-SEP is prepended and postpended (always by PRINC) to the result; if
-:RIGHT only at the end, and if :LEFT only at the beginning.
-
-Notes:
-
-This function can be used to build strings that represent pathnames
-starting from a list of strings.
-"
-  (with-output-to-string
-    (when (and enclose (member enclose '(t :left :both)))
-      (princ sep))
-    (princ (first sl))
-    (dolist (s (rest sl))
-      (princ (format "%s%s" sep s)))
-    (when (and enclose (member enclose '(t :right :both)))
-      (princ sep))
-    ))
-
-
-(cl-defun iron-main--shorten-pathname (pathname-string
-				       &optional (last-n 3))
-  (let* ((pname-strings (iron-main--split-pathname pathname-string))
-	 (last-pname-strings (last pname-strings last-n))
-	 (short-pname
-	  (iron-main--join-by last-pname-strings "/" :left))
-	 )
-    (if (> (length pname-strings) (length last-pname-strings))
-	(concatenate 'string "..." short-pname)
-      short-pname)))
 
 
 (defun iron-main-ds-to-string (ds)
@@ -216,6 +170,54 @@ More tests will be added in the future."
   )
 
 
+;;;; Host machine pathnames.
+
+(defun iron-main--split-pathname (pathname)
+  "Splits a pathname (Un*x or Windows) on the directory separators."
+  (if (stringp pathname)
+      (split-string pathname "[\\/]" t)
+    (error "PATHNAME %s is not a string" pathname)))
+
+
+(cl-defun iron-main--join-by (sl &optional (sep "") enclose)
+  "Joins strings.
+
+The function takes a list of objects (SL) and PRINCs them to a string
+that is eventually returned.  The separator SEP (a string) is used
+between each element of the list SL.
+
+ENCLOSE can be T, the keyword :LEFT, :RIGHT, or :BOTH.  If T or :BOTH,
+SEP is prepended and postpended (always by PRINC) to the result; if
+:RIGHT only at the end, and if :LEFT only at the beginning.
+
+Notes:
+
+This function can be used to build strings that represent pathnames
+starting from a list of strings.
+"
+  (with-output-to-string
+    (when (and enclose (member enclose '(t :left :both)))
+      (princ sep))
+    (princ (cl-first sl))
+    (dolist (s (cl-rest sl))
+      (princ (format "%s%s" sep s)))
+    (when (and enclose (member enclose '(t :right :both)))
+      (princ sep))
+    ))
+
+
+(cl-defun iron-main--shorten-pathname (pathname-string
+				       &optional (last-n 3))
+  (let* ((pname-strings (iron-main--split-pathname pathname-string))
+	 (last-pname-strings (last pname-strings last-n))
+	 (short-pname
+	  (iron-main--join-by last-pname-strings "/" :left))
+	 )
+    (if (> (length pname-strings) (length last-pname-strings))
+	(cl-concatenate 'string "..." short-pname)
+      short-pname)))
+
+
 ;;;; Hercules interface.
 ;;;; This may end up in a different file.
 
@@ -260,7 +262,7 @@ Notes:
 
 The current value returned in the case a Hercules instance is
 listening is a list with the network process as first element.  The
-`process-status' of this process will turn to 'closed'; therefore it
+`process-status' of this process will turn to \\='closed\\='; therefore it
 cannot be relied upon for anthing other than this check."
 
   (let* ((herc-string-url
