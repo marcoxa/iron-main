@@ -74,11 +74,11 @@ MSGCLASS (this is optional and defaults to 'H'."
   "//* IRON MAIN Emacs generated step.
 //* Check if dataset exists.
 //*
-//EMDSEXIS EXEC PGM=IDCAMS
-//SYSPRINT   DD DUMMY
-//SYSIN      DD *
-  LISTCAT ENTRIES('%s')
-/*
+//EXISTCHK EXEC PGM=IEFBR14
+//EXISTDSN      DD DSN='%s',
+//              DISP=(OLD,KEEP)
+//* CC should be non zero if DSN does not exist.
+//*
 "
   "Template for Emacs dataset existence check job step."
   )
@@ -107,15 +107,13 @@ MSGCLASS (this is optional and defaults to 'H'."
 
 
 
-(defun iron-main-jcl-tmpl--make-allocate-step (ds-rep &optional cond)
+(cl-defun iron-main-jcl-tmpl--make-allocate-step (ds-rep
+						  &optional (cond ""))
   "Generate the Emacs `allocation' step given a dataset rep DS-REP.
 
 The optional COND defaults to the empty string, otherwise it should be
 a condition that could prevent the step from running, possibly
 referring to previous steps."
-
-  (unless cond
-    (setq cond ""))
   
   (format iron-main-jcl-tmpl--allocate-step
 	  cond
@@ -142,15 +140,12 @@ referring to previous steps."
   )
 
 
-(defun iron-main-jcl-delete-step (ds-rep &optional cond)
+(cl-defun iron-main-jcl-delete-step (ds-rep &optional (cond ""))
   "Generate the Emacs `delete' step given a dataset rep DS-REP.
 
 The optional COND defaults to the empty string, otherwise it should be
 a condition that could prevent the step from running, possibly
 referring to previous steps."
-
-  (unless cond
-    (setq cond ""))
   
   (format iron-main-jcl-tmpl--delete-step
 	  cond
