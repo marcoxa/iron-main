@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 2023-06-26.1
+;; Version: 2023-09-05.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -91,11 +91,11 @@ This mode is part of the IRON MAIN package."
 (defcustom jcl-mode-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
-The values of this variable are strings starting either with 'MVS' or
-'z/OS'.  Other variants are acceptable as long as the 'main' OS name
+The values of this variable are strings starting either with \\='MVS\\=' or
+\\='z/OS\\='.  Other variants are acceptable as long as the \\='main\\=' OS name
 comes first.
 
-The value 'MVS 3.8j' is the default one, being the version of MVS
+The value \\='MVS 3.8j\\=' is the default one, being the version of MVS
 that IBM release in the public domain."
   :group 'jcl
   :type 'string)
@@ -110,7 +110,7 @@ that IBM release in the public domain."
   '("//" "/*" "//*")
   "JCL card starters.
 
-These are not really 'constants', as JCL does not really have them.")
+These are not really \\='constants\\=', as JCL does not really have them.")
 
 
 (defvar jcl-mode--strings
@@ -153,34 +153,34 @@ Version 2 Relase3).")
     )
   "JCL operands.
 
-The JCL operands are both positional and 'noun=adjective' ones, both
-left and right of the '=' sign.  The identifiers used on the right are
+The JCL operands are both positional and \\='noun=adjective\\=' ones, both
+left and right of the \\='=\\=' sign.  The identifiers used on the right are
 quite varied.
 
-In other languages, they would be the 'keyword' arguments.")
+In other languages, they would be the \\='keyword\\=' arguments.")
 
 
 (defvar jcl-mode--operators
   '("=" "&" "&&" "*")
-  "JCL 'operators'.  A really minimal set.")
+  "JCL \\='operators\\='.  A really minimal set.")
 
 (defvar jcl-mode--names
   "^//\\([^*][[:graph:]]+\\)"
   "JCL names.
 
-These are the 'names' of jobs and steps.")
+These are the \\='names\\=' of jobs and steps.")
 
 
 (defvar jcl-mode--comments
   "^//\\*.*$"
-  "JCL 'full card' comments.")
+  "JCL \\='full card\\=' comments.")
 
 
 (defvar jcl-mode--card-end-comments-1
   "^//[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
-  "JCL 'end of card' comments for 'full' cards.
+  "JCL \\='end of card\\=' comments for \\='full\\=' cards.
 
-Anything after the 'operands' in a card is a comment; this regexp
+Anything after the \\='operands\\=' in a card is a comment; this regexp
 selects them.")
 
 
@@ -190,25 +190,25 @@ selects them.")
 		  (regexp-opt jcl-mode--operations 'words)
 		  " +[[:graph:]]+"
 		  " +\\([[:graph:]].*\\)")
-  "JCL 'end of card' comments for 'unnamed' cards.
+  "JCL \\='end of card\\=' comments for \\='unnamed\\=' cards.
 
-Anything after the 'operands' in a card is a comment; this regexp
-selects them in case of cards that do not have a 'name'.")
+Anything after the \\='operands\\=' in a card is a comment; this regexp
+selects them in case of cards that do not have a \\='name\\='.")
 
 
 (defvar jcl-mode--card-end-comments-2
   "// +[[:graph:]]+ +\\([[:graph:]].*\\)"
-  "JCL 'end of card' comments for 'continuation' cards.
+  "JCL \\='end of card\\=' comments for \\='continuation\\=' cards.
 
-Anything after the 'operands' in a card is a comment; this regexp
-selects them in case of 'continuation' cards that do not have the
-'name' and 'operation'.")
+Anything after the \\='operands\\=' in a card is a comment; this regexp
+selects them in case of \\='continuation\\=' cards that do not have the
+\\='name\\=' and \\='operation\\='.")
 
 
 (defvar jcl-mode--card-not-interpretable
   "// \{14\}.*"
 
-  "JCL 'card with nothing before column 16'; i.e., not interpretable.")
+  "JCL \\='card with nothing before column 16\\='; i.e., not interpretable.")
 
 
 ;;; JCL faces.
@@ -220,31 +220,31 @@ selects them in case of 'continuation' cards that do not have the
   )
 
 (defcustom jcl-mode-names-face 'font-lock-function-name-face
-  "The face used to fontify 'names' in JCL mode."
+  "The face used to fontify \\='names\\=' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
 (defcustom jcl-mode-operations-face 'font-lock-keyword-face
-  "The face used to fontify 'operations' in JCL mode."
+  "The face used to fontify \\='operations\\=' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
 (defcustom jcl-mode-operands-face 'font-lock-type-face
-  "The face used to fontify 'operands' in JCL mode."
+  "The face used to fontify \\='operands\\=' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
 (defcustom jcl-mode-operators-face 'font-lock-builtin-face
-  "The face used to fontify 'operators' in JCL mode."
+  "The face used to fontify \\='operators\\=' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
 
 (defcustom jcl-mode-comment-face 'font-lock-comment-face
-  "The face used to fontify 'comments' in JCL mode."
+  "The face used to fontify \\='comments\\=' in JCL mode."
   :group 'jcl
   :type 'symbol
   )
@@ -252,7 +252,7 @@ selects them in case of 'continuation' cards that do not have the
 
 (defface jcl-mode-invalid-card
   '((t :underline (:color "red" :style wave)))
-  "Face to colorize 'invalid' cards; mostly those with too much leading spaces."
+  "Face to colorize \\='invalid\\=' cards; mostly those with too much leading spaces."
   :group 'hlasm
   )
 
@@ -286,7 +286,7 @@ selects them in case of 'continuation' cards that do not have the
     (,jcl-mode--card-end-comments-2 . (1 ,jcl-mode-comment-face))
     (,jcl-mode--comments . (0 ,jcl-mode-comment-face t))
     )
-  "The JCL mode 'font-lock' 'keyword' specification."
+  "The JCL mode \\='font-lock\\=' \\='keyword\\=' specification."
   )
 
 
@@ -294,7 +294,7 @@ selects them in case of 'continuation' cards that do not have the
   (list 'jcl-mode--font-lock-keywords
 	nil ; Do syntax based processing.
 	)
-  "The JCL mode 'font-lock' defaults specification."
+  "The JCL mode \\='font-lock\\=' defaults specification."
   )
 
 
@@ -402,10 +402,10 @@ reader requests.  It defaults to '127.0.0.1'.")
 			   (host  *jcl-mode-default-os-address*)
 			   (port  *jcl-mode-default-os-reader-port*)
 			   )
-  "Submits the buffer's content to the 'card reader' at PORT on HOST.
+  "Submits the buffer's content to the \\='card reader\\=' at PORT on HOST.
 
-The buffer contains 'JCL cards' (i.e., lines) which are submitted to a
-'card reader' on HOST listening on PORT.  HOST is an IP address; its
+The buffer contains \\='JCL cards\\=' (i.e., lines) which are submitted to a
+\\='card reader\\=' on HOST listening on PORT.  HOST is an IP address; its
 default is `*jcl-mode-default-os-address*' (i.e., \"127.0.0.1\" PORT
 is an integer; its default is `*jcl-mode-default-os-reader-port*'
 (i.e., 3505).
@@ -451,10 +451,10 @@ HOST and PORT."
 
 
 (defun jcl-mode-submit-file (jcl-file &optional port)
-  "Submits the file JCL-FILE to the 'card reader' at PORT.
+  "Submits the file JCL-FILE to the \\='card reader\\=' at PORT.
 
-The file JCL-FILE contains 'JCL cards' (i.e., lines) which are
-submitted to a 'card reader' listening on PORT.  PORT is an
+The file JCL-FILE contains \\='JCL cards\\=' (i.e., lines) which are
+submitted to a \\='card reader\\=' listening on PORT.  PORT is an
 integer; its default is 3505."
     
   (interactive
