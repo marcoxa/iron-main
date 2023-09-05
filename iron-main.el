@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2023-06-02.1
+;; Version: 2023-09-04.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -40,6 +40,7 @@
 
 (defvar iron-main-path (file-name-directory (or load-file-name "."))
   "The location the IRON MAIN library is loaded from.")
+
 
 (defvar iron-main-path-tests
   (expand-file-name "tests/" iron-main-path)
@@ -90,8 +91,8 @@ should cause the (re)compilation fo the folder.")
 ;;;; Epilogue
 ;;;; ========
 
-(if iron-main--do-recompile-dir
-    (byte-recompile-directory iron-main-path 0))
+(when iron-main--do-recompile-dir
+  (byte-recompile-directory iron-main-path 0))
 
 (message "IMEL00I: Library IRON MAIN loaded.")
 
