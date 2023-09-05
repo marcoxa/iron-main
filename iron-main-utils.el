@@ -124,7 +124,7 @@ More tests will be added in the future."
 	)
     
     (when (> (length dsname) 44)	; Make this a constant.
-      (error "DSNAME '%s' is too long" dsname))
+      (error "IMU01E: DSNAME '%s' is too long" dsname))
 
     (let* ((quals-member (split-string dsname "[()]" nil " +")) ; Ok. Kludge.
 	   (quals-string (cl-first quals-member))
@@ -133,27 +133,27 @@ More tests will be added in the future."
 		       (split-string (cl-first quals-member) "\\." nil)))
 	   )
       (when (zerop (length quals-string))
-	(error "DSNAME is empty"))
+	(error "IMU02E: DSNAME is empty"))
 
       (when (equal "." quals-string)
-	(error "DSNAME '%'s is invalid" quals-string))
+	(error "IMU03E: DSNAME '%'s is invalid" quals-string))
 
       (when (member "" quals)
 	;; Found a null string in quals; this means that we had two
 	;; dots `.' next to each other, which is an error.
-	(error "DSNAME '%s' cannot contain an empty qualifier"
+	(error "IMU04E: DSNAME '%s' cannot contain an empty qualifier"
 	       dsname))
 
       (when (cl-some (lambda (q) (> (length q) 8)) quals)
-	(error "DSNAME '%s' cannot contain a qualifier longer than 8 characters"
+	(error "IMU05E: DSNAME '%s' cannot contain a qualifier longer than 8 characters"
 	       dsname))
 
       (when (and member-name (zerop (length member-name)))
-	(error "DSNAME '%s' cannot have the member long 0 characters"
+	(error "IMU06E: DSNAME '%s' cannot have the member long 0 characters"
 	       dsname))
       
       (when (and member-name (> (length member-name) 8))
-	(error "DSNAME '%s' cannot have the member longer that 8 characters"
+	(error "IMU07E: DSNAME '%s' cannot have the member longer that 8 characters"
 	       dsname))
 
       ;; All is fine.
@@ -164,7 +164,7 @@ More tests will be added in the future."
 (defun iron-main-check-dsorg-and-dir (dsorg dir-blocks)
   "Check compatibility of DSORG and DIR-BLOCKS."
   (when (and (equal dsorg "PO") (zerop dir-blocks))
-    (error "DS REP cannot have \"PO\" DSORG and 0 directory blocks"))
+    (error "IMU08E: DS REP cannot have \"PO\" DSORG and 0 directory blocks"))
   ;; More checks later.
   t
   )
@@ -176,7 +176,7 @@ More tests will be added in the future."
   "Splits a pathname (Un*x or Windows) on the directory separators."
   (if (stringp pathname)
       (split-string pathname "[\\/]" t)
-    (error "PATHNAME %s is not a string" pathname)))
+    (error "IMU09E: PATHNAME %s is not a string" pathname)))
 
 
 (cl-defun iron-main--join-by (sl &optional (sep "") enclose)
@@ -225,7 +225,7 @@ starting from a list of strings.
   "Set the `iron-main-dasd-dir' to DASD-DIR."
   (if (file-directory-p dasd-dir)
       (setq-local iron-main-hercules-dasd-dir dasd-dir)
-    (error "Cannot set the DASD folder to %s; not a directory"
+    (error "IMU10E: Cannot set the DASD folder to %s; not a directory"
 	   dasd-dir)))
 
 
