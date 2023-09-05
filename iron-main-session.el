@@ -25,6 +25,9 @@
   (machine iron-main-machine)
   (os-flavor iron-main-os-flavor)
   (id (gensym "iron-main-session#") :read-only t)
+  (user "LUSER" :type string)
+  (passwd "PASSWORD" :type string)
+
   )
 
 
@@ -34,7 +37,10 @@
 	       (:conc-name iron-main-hs-) ; Let's shorten the names.
 	       (:include iron-main-session
 			 (machine "Hercules")
-			 (os-flavor "MVS 3.8j"))
+			 (os-flavor "MVS 3.8j")
+			 (user "HERC01")
+			 (passwd "CUL8ER")
+			 )
 	       )
   "IRON MAIN session data for Hercules connection."
   
@@ -45,8 +51,6 @@
   (os-dir iron-main-hercules-os-dir)
   (dasd-dir iron-main-hercules-dasd-dir)
   (card-reader-port iron-main-hercules-card-reader-port)
-  (user "HERC01" :type string)
-  (passwd "CUL8ER")
   )
 
 
@@ -57,7 +61,10 @@
 	       (:conc-name iron-main-is-)
 	       (:include iron-main-session
 			 (machine "IBM z")
-			 (os-flavor "z/OS"))
+			 (os-flavor "z/OS")
+			 (user "IBMUSER")
+			 (passwd "")
+			 )
 	       )
   "IRON MAIN session data for connections to IBM mainframes."
   )
@@ -69,7 +76,10 @@
 	       (:conc-name iron-main-mts-)
 	       (:include iron-main-hercules-session
 			 (machine "Hercules")
-			 (os-flavor "MTS"))
+			 (os-flavor "MTS")
+			 (user "ST01")
+			 (passwd "ST01")
+			 )
 	       )
   "IRON MAIN session data for connections to MTS running on Hercules."
   )
