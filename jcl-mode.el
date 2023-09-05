@@ -450,7 +450,10 @@ HOST and PORT."
 (defalias 'submit 'jcl-mode-submit)
 
 
-(defun jcl-mode-submit-file (jcl-file &optional port)
+(cl-defun jcl-mode-submit-file (jcl-file
+				&optional
+				(host  *jcl-mode-default-os-address*)
+				(port *jcl-mode-default-os-reader-port*))
   "Submits the file JCL-FILE to the \\='card reader\\=' at PORT.
 
 The file JCL-FILE contains \\='JCL cards\\=' (i.e., lines) which are
@@ -459,20 +462,19 @@ integer; its default is 3505."
     
   (interactive
    (let ((f (read-file-name "JCL: card file: " nil nil 'confirm))
+	 (a (read-string "JCL: card reader host: "
+			   *jcl-mode-default-os-address*))
 	 (p (read-number "JCL: card reader number/port: "
 			 *jcl-mode-default-os-reader-port*))
 	 )
-     (list f p)))
+     (list f a p)))
 
-  (unless port
-    (setq port *jcl-mode-default-os-reader-port*))
-    
   (message "JCL: submitting '%s' to card reader number/port %s."
 	   jcl-file port)
   (let ((card-reader-stream
 	 (open-network-stream "JCL OS CARD READER"
 			      nil
-			      "127.0.0.1"
+			      host
 			      port
 			      :type 'plain
 			      ))
