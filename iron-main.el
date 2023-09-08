@@ -3,13 +3,13 @@
 
 ;;; iron-main.el
 ;;
-;; See the file COPYING license and copyright information.
+;; See the file COPYING license and copyright information.q
 ;;
 ;; Author: Marco Antoniotti <marcoxa [at] gmail.com>
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2023-09-04.1
+;; Version: 2023-09-06.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -68,12 +68,13 @@ should cause the (re)compilation fo the folder.")
 (load (expand-file-name "iron-main-vars" iron-main-path))
 (load (expand-file-name "iron-main-widgets" iron-main-path))
 (load (expand-file-name "iron-main-ruler-function" iron-main-path))
-(load (expand-file-name "iron-main-utils" iron-main-path))
 (load (expand-file-name "iron-main-session" iron-main-path))
+(load (expand-file-name "iron-main-utils" iron-main-path))
 (load (expand-file-name "iron-main-jcl-templates" iron-main-path))
+(load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
+
 ;; (load (expand-file-name "iron-main-panels" iron-main-path))
 (load (expand-file-name "iron-main-epf" iron-main-path))
-(load (expand-file-name "iron-main-hercules-cmds" iron-main-path))
 (load (expand-file-name "iron-main-mode" iron-main-path))
 
 
