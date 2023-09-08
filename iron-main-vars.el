@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 28, 2020.
 ;;
-;; Version: 20201228.1
+;; Version: 2023-09-06.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -25,21 +25,23 @@
 ;;; Customizations:
 
 (defgroup iron-main ()
-  "A minor mode to edit files and interact with IBM MVS or z/OS .
+  "Emacs interaction with Mainframes OSes (e.g., IBM MVS or z/OS).
 
-This is a minor mode just because it is a good thing to have a
-shared location where to centralize definitions for the main modes
-and functionalities that make up this package.  E.g., see the major
-modes `jcl-mode' and `asmibm-mode'."
-  :group 'languages)
+IRON MAIN is a collection of applications and modes (major and minor)
+that can be used to interact with IBM MVS or z/OS.  Most shared
+options regarding the collection of application and modes are
+collected under this heading.
+
+See also, e.g., see the major modes `jcl-mode' and `hlasm-mode'."
+  :group 'Applications)
 
 
 (defcustom iron-main-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
-The values of this variable are strings starting either with 'MVS' or
-'z/OS'.  Other variants are acceptable as long as the 'main' OS name
-comes first.
+The values of this variable are strings starting either with
+\\='MVS\\=' or \\='z/OS\\='.  Other variants are acceptable as long as
+the \\='main\\=' OS name comes first.
 
 The value \"MVS 3.8j\" is the default one, being the version of MVS
 that IBM released in the public domain."
@@ -55,20 +57,20 @@ possible values is \"IBM machine\", in which case we mean real heavy
 iron hardware.
 
 The values for this variable are strings starting with the type of
-machine to which a 'connection' can be made.  For the time being the
-only meaningful value is a string starting with 'Hercules', intended
-as a variant of the Hercules emulator.  In the future it may be
-possible to have also strings starting with 'IBM' (or, possibly,
-'Hitachi', etc.).
+machine to which a \\='connection\\=' can be made.  For the time being
+the only meaningful value is a string starting with \\='Hercules\\=',
+intended as a variant of the Hercules emulator.  In the future it may
+be possible to have also strings starting with \\='IBM\\=' (or,
+possibly, '\\=Hitachi\\=', etc.).
 
-If this variable has a 'Hercules' value, the Hercules emulator is
-running and it has the internal HTTP server active, then IRON MAIN
+If this variable has a \\='Hercules\\=' value, the Hercules emulator
+is running and it has the internal HTTP server active, then IRON MAIN
 will be able to extract some information about it.
 
-If the Hercules emulator is running and it has the 'card reader'
+If the Hercules emulator is running and it has the \\='card reader\\='
 active on port 3505 (or another suitable one), then it is possible for
 IRON MAIN to at least submit jobs to it, especially if it has a
-version of 'MVS' (or 'z/OS') running."
+version of \\='MVS\\=' (or \\='z/OS\\=') running."
   :group 'iron-main
   :type 'string)
 
@@ -81,7 +83,7 @@ version of 'MVS' (or 'z/OS') running."
 (defcustom iron-main-hercules-version
   (when (string= (substring iron-main-machine 0 (length "Hercules"))
 		 "Hercules")
-    "SDL/Hyperion 4.3.x")
+    "SDL/Hyperion 4.x.x")
   "The Hercules version we are running."
   ;; Hardcoded FTTB; make it more intelligent later.
   :group 'iron-main-hercules
@@ -96,12 +98,12 @@ version of 'MVS' (or 'z/OS') running."
 
 
 (defcustom iron-main-hercules-http-port 8038
-  "The more or less standard port Hercules uses to listen for HTTP requests."
+  "The standard-ish port Hercules uses to listen for HTTP requests."
   :group 'iron-main-hercules
   :type  'integer)
 
 
-(defcustom iron-main-hercules-os-dir ""
+(defcustom iron-main-hercules-os-dir "."
   "The folder where the OS running on Hercules resides..
 
 This variable makes sense only for Hercules installations, i.e., for
@@ -122,12 +124,13 @@ setups where the value of `iron-main-machine' is \"Hercules ...\"."
 
 
 (defcustom iron-main-hercules-card-reader-port 3505
-  "The port where the Hercules 'card reader' listens to.
+  "The port where the Hercules \\='card reader\\=' listens to.
 
-Hercules usually has a 'card reader' configured to listen on a socket
-with default port number 3505 (the IBM card reader devide model
-number). This reader, if configured, can be used submit JCL directly,
-which is what IRON MAIN exploits in `jcl-mode'."
+Hercules usually has a \\='card reader\\=' configured to listen
+on a socket with default port number 3505 (the IBM card reader
+devide model number). This reader, if configured, can be used
+submit JCL directly, which is what IRON MAIN exploits in
+`jcl-mode'."
   :group 'iron-main-hercules
   :type  'integer
   )

@@ -91,12 +91,12 @@ This mode is part of the IRON MAIN package."
 (defcustom jcl-mode-os-flavor "MVS 3.8j"
   "The current flavor of MVS used.
 
-The values of this variable are strings starting either with \\='MVS\\=' or
-\\='z/OS\\='.  Other variants are acceptable as long as the \\='main\\=' OS name
-comes first.
+The values of this variable are strings starting either with
+\\='MVS\\=' or \\='z/OS\\='.  Other variants are acceptable as long as
+the \\='main\\=' OS name comes first.
 
-The value \\='MVS 3.8j\\=' is the default one, being the version of MVS
-that IBM release in the public domain."
+The value \\='MVS 3.8j\\=' is the default one, being the version of
+MVS that IBM release in the public domain."
   :group 'jcl
   :type 'string)
 
@@ -110,7 +110,8 @@ that IBM release in the public domain."
   '("//" "/*" "//*")
   "JCL card starters.
 
-These are not really \\='constants\\=', as JCL does not really have them.")
+These are not really \\='constants\\=', as JCL does not really have
+them.")
 
 
 (defvar jcl-mode--strings
@@ -153,9 +154,9 @@ Version 2 Relase3).")
     )
   "JCL operands.
 
-The JCL operands are both positional and \\='noun=adjective\\=' ones, both
-left and right of the \\='=\\=' sign.  The identifiers used on the right are
-quite varied.
+The JCL operands are both positional and \\='noun=adjective\\=' ones,
+both left and right of the \\='=\\=' sign.  The identifiers used on
+the right are quite varied.
 
 In other languages, they would be the \\='keyword\\=' arguments.")
 
@@ -180,8 +181,8 @@ These are the \\='names\\=' of jobs and steps.")
   "^//[^* ]+ +[[:graph:]]+ +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "JCL \\='end of card\\=' comments for \\='full\\=' cards.
 
-Anything after the \\='operands\\=' in a card is a comment; this regexp
-selects them.")
+Anything after the \\='operands\\=' in a card is a comment; this
+regexp selects them.")
 
 
 (defvar jcl-mode--card-end-comments-1b
@@ -192,23 +193,25 @@ selects them.")
 		  " +\\([[:graph:]].*\\)")
   "JCL \\='end of card\\=' comments for \\='unnamed\\=' cards.
 
-Anything after the \\='operands\\=' in a card is a comment; this regexp
-selects them in case of cards that do not have a \\='name\\='.")
+Anything after the \\='operands\\=' in a card is a comment; this
+regexp selects them in case of cards that do not have a
+\\='name\\='.")
 
 
 (defvar jcl-mode--card-end-comments-2
   "// +[[:graph:]]+ +\\([[:graph:]].*\\)"
   "JCL \\='end of card\\=' comments for \\='continuation\\=' cards.
 
-Anything after the \\='operands\\=' in a card is a comment; this regexp
-selects them in case of \\='continuation\\=' cards that do not have the
-\\='name\\=' and \\='operation\\='.")
+Anything after the \\='operands\\=' in a card is a comment; this
+regexp selects them in case of \\='continuation\\=' cards that do not
+have the \\='name\\=' and \\='operation\\='.")
 
 
 (defvar jcl-mode--card-not-interpretable
   "// \{14\}.*"
 
-  "JCL \\='card with nothing before column 16\\='; i.e., not interpretable.")
+  "JCL \\='card with nothing before column 16\\='; i.e., not
+  interpretable.") 
 
 
 ;;; JCL faces.
@@ -252,7 +255,8 @@ selects them in case of \\='continuation\\=' cards that do not have the
 
 (defface jcl-mode-invalid-card
   '((t :underline (:color "red" :style wave)))
-  "Face to colorize \\='invalid\\=' cards; mostly those with too much leading spaces."
+  "Face to colorize \\='invalid\\=' cards; mostly those with too much
+  leading spaces."
   :group 'hlasm
   )
 
@@ -323,7 +327,7 @@ selects them in case of \\='continuation\\=' cards that do not have the
 ;;; jcl-imenu-generic-expression
 
 (defvar jcl-mode-imenu-generic-expression
-  '(("Job" "//\\([^* ]*\\) +JOB" 1)		; The JOB is always first.
+  '(("Job" "//\\([^* ]*\\) +JOB" 1)	; The JOB is always first.
     ("Steps" "//\\([^* ]+\\) +EXEC" 1)
     ("SYSIN" "//\\([^* ]*SYSIN\\) +DD" 1)
     ("DD" "//\\([^* ]+\\) +DD" 1)
@@ -362,9 +366,11 @@ selects them in case of \\='continuation\\=' cards that do not have the
     "JCL commands"
     '("JCL OS"
       ["Submit Job" jcl-mode-submit
-       :help "Submit the job contained in the current buffer." ]
+       :help
+       "Submit the job contained in the current buffer." ]
       ["Submit a JCL File" jcl-mode-submit-file
-       :help "Submit a JCL file to a card reader; a port will be asked for."])
+       :help
+       "Submit a JCL file to a card reader; a port will be asked for."])
     )
 
   (setq-local imenu-generic-expression
@@ -395,7 +401,7 @@ reader requests.")
   "The default OS reader address.
 
 This is the IP address where JCL-MODE assumes the OS is listening for
-reader requests.  It defaults to '127.0.0.1'.")
+reader requests.  It defaults to \\='127.0.0.1\\='.")
 
 
 (cl-defun jcl-mode-submit (&optional
@@ -404,11 +410,11 @@ reader requests.  It defaults to '127.0.0.1'.")
 			   )
   "Submits the buffer's content to the \\='card reader\\=' at PORT on HOST.
 
-The buffer contains \\='JCL cards\\=' (i.e., lines) which are submitted to a
-\\='card reader\\=' on HOST listening on PORT.  HOST is an IP address; its
-default is `*jcl-mode-default-os-address*' (i.e., \"127.0.0.1\" PORT
-is an integer; its default is `*jcl-mode-default-os-reader-port*'
-(i.e., 3505).
+The buffer contains \\='JCL cards\\=' (i.e., lines) which are
+submitted to a \\='card reader\\=' on HOST listening on PORT.  HOST is
+an IP address; its default is `*jcl-mode-default-os-address*' (i.e.,
+\"127.0.0.1\" PORT is an integer; its default is
+`*jcl-mode-default-os-reader-port*' (i.e., 3505).
 
 If called inteactively with a prefix argument, the command asks for
 HOST and PORT."
@@ -440,9 +446,10 @@ HOST and PORT."
     (unwind-protect
 	(progn
 	  (process-send-region card-reader-stream (point-min) (point-max))
-	  (message "JCL: job submitted to host %s on card reader number/port %s."
-		   host
-		   port))
+	  (message
+	   "JCL: job submitted to host %s on card reader number/port %s."
+	   host
+	   port))
       (delete-process card-reader-stream))
     ))
 
@@ -450,10 +457,11 @@ HOST and PORT."
 (defalias 'submit 'jcl-mode-submit)
 
 
-(cl-defun jcl-mode-submit-file (jcl-file
-				&optional
-				(host  *jcl-mode-default-os-address*)
-				(port *jcl-mode-default-os-reader-port*))
+(cl-defun jcl-mode-submit-file
+    (jcl-file
+     &optional
+     (host  *jcl-mode-default-os-address*)
+     (port *jcl-mode-default-os-reader-port*))
   "Submits the file JCL-FILE to the \\='card reader\\=' at PORT.
 
 The file JCL-FILE contains \\='JCL cards\\=' (i.e., lines) which are
@@ -471,6 +479,7 @@ integer; its default is 3505."
 
   (message "JCL: submitting '%s' to card reader number/port %s."
 	   jcl-file port)
+  
   (let ((card-reader-stream
 	 (open-network-stream "JCL OS CARD READER"
 			      nil
@@ -482,7 +491,9 @@ integer; its default is 3505."
     (unwind-protect
 	(with-temp-buffer
 	  (insert-file-contents jcl-file)
-	  (process-send-region card-reader-stream (point-min) (point-max))
+	  (process-send-region card-reader-stream
+			       (point-min)
+			       (point-max))
 	  (message "JCL: submitted.")
 	  )
       (delete-process card-reader-stream))

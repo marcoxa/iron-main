@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 17th, 2020.
 ;;
-;; Version: 20201229.1
+;; Version: 20230905.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -28,7 +28,7 @@
 (require 'iron-main-vars)
 (require 'iron-main-utils)
 ;; (require 'iron-main-panels)
-(require 'iron-main-epf)
+;; (require 'iron-main-epf)
 
 
 ;;;; Hercules commands.
@@ -52,8 +52,8 @@
 ;; 20201228
 ;; Hercules HTTP returns HTML, with a <pre> element that just contains
 ;; the printout produced by the command (which is intended to be
-;; issued at the console).  Of course, it's be much nicer if Hercules
-;; contained a REST and JSON (or better, S-expr) server, alas, su such
+;; issued at the console).  Of course, it'd be much nicer if Hercules
+;; contained a REST and JSON (or better, S-expr) server, alas, no such
 ;; luxury at the end of 2020.
 
 
