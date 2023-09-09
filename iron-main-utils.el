@@ -32,6 +32,7 @@
 (require 'cl-lib)
 (require 'url)
 (require 'iron-main-vars)
+(require 'iron-main-session)
 
 
 ;;;; Mainframe setup.
@@ -145,16 +146,19 @@ More tests will be added in the future."
 	       dsname))
 
       (when (cl-some (lambda (q) (> (length q) 8)) quals)
-	(error "IMU05E: DSNAME '%s' cannot contain a qualifier longer than 8 characters"
-	       dsname))
+	(error
+	 "IMU05E: DSNAME '%s' cannot contain a qualifier longer than 8 characters"
+	 dsname))
 
       (when (and member-name (zerop (length member-name)))
-	(error "IMU06E: DSNAME '%s' cannot have the member long 0 characters"
-	       dsname))
+	(error
+	 "IMU06E: DSNAME '%s' cannot have the member long 0 characters"
+	 dsname))
       
       (when (and member-name (> (length member-name) 8))
-	(error "IMU07E: DSNAME '%s' cannot have the member longer that 8 characters"
-	       dsname))
+	(error
+	 "IMU07E: DSNAME '%s' cannot have the member longer that 8 characters"
+	 dsname))
 
       ;; All is fine.
       t
@@ -164,7 +168,8 @@ More tests will be added in the future."
 (defun iron-main-check-dsorg-and-dir (dsorg dir-blocks)
   "Check compatibility of DSORG and DIR-BLOCKS."
   (when (and (equal dsorg "PO") (zerop dir-blocks))
-    (error "IMU08E: DS REP cannot have \"PO\" DSORG and 0 directory blocks"))
+    (error
+     "IMU08E: DS REP cannot have \"PO\" DSORG and 0 directory blocks"))
   ;; More checks later.
   t
   )
@@ -219,6 +224,7 @@ starting from a list of strings.
 
 
 ;;;; Hercules interface.
+;;;; ===================
 ;;;; This may end up in a different file.
 
 (defun iron-main-hercules-set-dasd-dir (dasd-dir)
@@ -244,11 +250,12 @@ starting from a list of strings.
 ;;       )))
 
 
-(cl-defun iron-main-hercules-is-listening (&optional
-					   (herc-host
-					    iron-main-hercules-http-host)
-					   (herc-port
-					    iron-main-hercules-http-port))
+(cl-defun iron-main-hercules-is-listening
+    (&optional
+     (herc-host
+      iron-main-hercules-http-host)
+     (herc-port
+      iron-main-hercules-http-port))
   "Check whether there is a HTTP-enabled Hercules instance running.
 
 The Hercules instance should be running on HERC-HOST listening on
@@ -262,8 +269,9 @@ Notes:
 
 The current value returned in the case a Hercules instance is
 listening is a list with the network process as first element.  The
-`process-status' of this process will turn to \\='closed\\='; therefore it
-cannot be relied upon for anthing other than this check."
+`process-status' of this process will turn to \\='closed\\=';
+therefore it cannot be relied upon for anthing other than this check."
+ 
 
   (let* ((herc-string-url
 	  (concat "http://" herc-host ":" (format "%s" herc-port)))
@@ -288,7 +296,9 @@ cannot be relied upon for anthing other than this check."
 		(list c (process-status c))
 	      (delete-process c))))
       (file-error
-       (message "IMHE000W: failed with %S %S" (cl-first e) (cl-second e))
+       (message "IMHE000W: failed with %S %S"
+		(cl-first e)
+		(cl-second e))
        nil)
       (error
        (message "IMHE001W: %S %S" (cl-first e) (cl-second e))
@@ -320,7 +330,9 @@ The command is issued synchronously with a TIMEOUT (cfr.,
 
   (when (and check-listening
 	     (not (iron-main-hercules-is-listening host port)))
-    (message "IMHE002W: no Hercules connection; command %S not issued." cmd)
+    (message
+     "IMHE002W: no Hercules connection; command %S not issued."
+     cmd)
     (cl-return-from iron-main-hercules-cmd nil))
   
   ;; The following CGI url was desumed from Hercules HTTP
@@ -337,6 +349,124 @@ The command is issued synchronously with a TIMEOUT (cfr.,
     (ignore-errors
       (url-retrieve-synchronously cmd-url nil nil timeout)))
   )
+
+
+;;; Hercules READER interaction.
+;;; Notes:
+;;;
+;;; 20230905:
+;;; The code is actually lifted from jcl-mode.el, but it must be
+;;; re-done here to reduce dependencies.  The main difference is that
+;;; the functions below are not interactive and "internal".
+;;; Again, these functions may end up in a different file.
+
+(cl-defun iron-main--submit (&optional
+			     (host iron-main-hercules-http-host)
+			     (port iron-main-hercules-card-reader-port)
+			     )
+  "Submits the buffer's content to the \\='card reader\\=' at PORT on HOST.
+
+The buffer contains \\='JCL cards\\=' (i.e., lines) which are
+submitted to a \\='card reader\\=' on HOST listening on PORT.  HOST is
+an IP address; its default is `iron-main-hercules-http-host' (i.e.,
+\"127.0.0.1\"), PORT is an integer; its default is
+`iron-main-hercules-card-reader-port' (i.e., 3505)."
+  
+  (message
+   "IMU001I: submitting to host %s on card reader number/port %s."
+   host
+   port)
+
+  ;; The following is Good enough FTTB.  It should be made more error
+  ;; tolerant.
+  
+  (let ((card-reader-stream
+	 (open-network-stream "JCL OS CARD READER"
+			      nil
+			      host
+			      port
+			      :type 'plain
+			      ))
+	)
+    (unwind-protect
+	(progn
+	  (process-send-region card-reader-stream
+			       (point-min)
+			       (point-max))
+	  (message
+	   "JCL: job submitted to host %s on card reader number/port %s."
+	   host
+	   port))
+      (delete-process card-reader-stream))
+    ))
+
+
+(cl-defun iron-main--submit-buffer
+    (buffer
+     &optional
+     (host iron-main-hercules-http-host)
+     (port iron-main-hercules-card-reader-port)
+     )
+  "Submits the BUFFER's content to the \\='card reader\\=' at PORT on HOST.
+
+The BUFFER contains \\='JCL cards\\=' (i.e., lines) which are
+submitted to a \\='card reader\\=' on HOST listening on PORT.  HOST is
+an IP address; its default is `*jcl-mode-default-os-address*' (i.e.,
+\"127.0.0.1\" PORT is an integer; its default is
+`*jcl-mode-default-os-reader-port*' (i.e., 3505).
+
+If called inteactively with a prefix argument, the command asks for
+HOST and PORT."
+  
+  
+  (message
+   "IMU001I: submitting to host %s on card reader number/port %s."
+   host
+   port)
+
+  ;; The following is Good enough FTTB.  It should be made more error
+  ;; tolerant.
+
+  (with-current-buffer buffer
+    (iron-main--submit host port)))
+
+
+(cl-defun iron-main--submit-file
+    (jcl-file
+     &optional
+     (host iron-main-hercules-http-host)
+     (port iron-main-hercules-card-reader-port)
+     )
+  "Submits the file JCL-FILE to the \\='card reader\\=' at PORT.
+
+The file JCL-FILE contains \\='JCL cards\\=' (i.e., lines) which are
+submitted to a \\='card reader\\=' listening on PORT.  PORT is an
+integer; its default is 3505."
+    
+
+  (message "IMU0002I: submitting '%s' to card reader number/port %s."
+	   jcl-file port)
+  
+  (let ((card-reader-stream
+	 (open-network-stream "JCL OS CARD READER"
+			      nil
+			      host
+			      port
+			      :type 'plain
+			      ))
+	)
+    (unwind-protect
+	(with-temp-buffer
+	  (insert-file-contents jcl-file)
+	  (process-send-region card-reader-stream
+			       (point-min)
+			       (point-max))
+	  (message "IMU0003I: JCL file '%s' submitted."
+		   jcl-file)
+	  )
+      (delete-process card-reader-stream))
+    )
+)
 
 
 ;;;; Epilogue
