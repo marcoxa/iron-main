@@ -9,7 +9,7 @@
 ;;
 ;; Created: July 20th, 2023.
 ;;
-;; Version: 2023-07-20.1
+;; Version: 2023-09-06.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -181,7 +181,7 @@ The key map inherits from `widget-field-keymap'.
 The key \\='<f3>\\=' (that is, \\='PF3\\=') exits the current panel.")
 
 
-;;; Othe buffer local variables.
+;;; Other buffer local variables.
 
 (defvar-local iron-main-epf--cmds ()
   "The panel command alist.
@@ -630,6 +630,11 @@ file system(s) that Emacs has direct access to; most notably, the
 	      (iron-main-epf--insert-command-widgets
 	       iron-main-epf--cmds))
 
+  (widget-insert "\n\n")
+  (widget-insert iron-main-epf--underline)
+  (widget-insert "\n")
+  (widget-insert (iron-main-epf--instance-banner session))
+
   (message "IMHS00I: Hercules datasets and file system utilities.")
   (prog1 (widget-setup)
     ;; (widget-forward 1)
@@ -640,6 +645,10 @@ file system(s) that Emacs has direct access to; most notably, the
 
 ;; Dataset allocation.
 ;; -------------------
+
+(defvar-local iron-main-epf--jcl-alloc-job-buffer nil
+  "The buffer containing the JCL to allocate a dataset.")
+
 
 (cl-defun iron-main-epf--dataset-allocation (session &rest args)
   "Create the IRON MAIN dataset allocation panel."
@@ -665,13 +674,15 @@ file system(s) that Emacs has direct access to; most notably, the
   
   (setq-local iron-main-epf--tag "Allocation panel")
   (setq-local iron-main-epf--cmds ())
+  (setq-local iron-main-epf--session session)
 
   
   ;; Let's start!
   
   ;; (iron-main-epf--title-field "Dataset allocation panel")
   (setq-local header-line-format
-	      (iron-main-epf--make-header-line "Dataset allocation panel"))
+	      (iron-main-epf--make-header-line
+	       "Dataset allocation panel"))
   
   (iron-main-epf--dsname-item-field)
 			 
@@ -683,16 +694,18 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :value (iron-main-ds-rep-recfm
 			       iron-main-epf--current-ds)
 		       :size 3
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "RECF: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-recfm
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "RECF: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-recfm
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 		       :keymap
 		       iron-main-epf-editable-field-keymap
-		       :help-echo "Please enter the record format: F, FB, V..."
+		       :help-echo
+		       "Please enter the record format: F, FB, V..."
 		       ))
   (widget-insert "\n")
   (message "IMPDSA1: RECFM widget created.")
@@ -705,17 +718,19 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :size 4
 		       
 		       ;; :value-regexp "[0-9]+"
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "LRECL: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-lrecl
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "LRECL: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-lrecl
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 
 		       :keymap
 		       iron-main-epf-editable-field-keymap
-		       :help-echo "Please enter the record length..."
+		       :help-echo
+		       "Please enter the record length..."
 		       ))
   (widget-insert "\n")
   (message "IMPDSA2: LRECL widget created.")
@@ -727,17 +742,19 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-epf--current-ds)
 		       :size 6
 		       ;; :value-regexp "[0-9]+"
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "BLKSIZE: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-blksize
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "BLKSIZE: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-blksize
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 
 		       :keymap
 		       iron-main-epf-editable-field-keymap
-		       :help-echo "Please enter the block size..."
+		       :help-echo
+		       "Please enter the block size..."
 		       ))
   (widget-insert "\n\n")
   (message "IMPDSA3: BLKSIZE widget created.")
@@ -759,7 +776,8 @@ file system(s) that Emacs has direct access to; most notably, the
                        
 		       :keymap
 		       iron-main-epf-editable-field-keymap
-		       :help-echo "Please enter the unit info..."
+		       :help-echo
+		       "Please enter the unit info..."
 		       ))
   (widget-insert "\n\n")
   (message "IMPDSA4: UNIT widget created.")
@@ -803,14 +821,17 @@ file system(s) that Emacs has direct access to; most notably, the
 		       ;; :value "TRK"
 		       :void  "TRK"
 		       :indent 4
-		       :help-echo "Please choose the dataset space unit..."
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "Dataset space unit: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-space-unit
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :help-echo
+		       "Please choose the dataset space unit..."
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Dataset space unit: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-space-unit
+				iron-main-epf--current-ds)
+			       (widget-value w)))
+		       
 		       '(item "TRK")
 		       '(item "CYL")
 		       '(item "BLK")
@@ -826,17 +847,19 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-epf--current-ds)
 		       :size 8
 		       ;; :value-regexp "[0-9]+"
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "Primary: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-primary
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Primary: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-primary
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 
 		       :keymap
 		       iron-main-epf-editable-field-keymap
-		       :help-echo "Please the primary amount of space..."
+		       :help-echo
+		       "Please the primary amount of space..."
 		       ))
   (message "IMPDSA7: Primary widget created.")
   
@@ -848,13 +871,14 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-epf--current-ds)
 		       :size 8
 		       ;; :value-regexp "[0-9]+"
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "Secondary: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-secondary
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Secondary: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-secondary
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 		       :keymap
 		       iron-main-epf-editable-field-keymap
                        
@@ -871,13 +895,14 @@ file system(s) that Emacs has direct access to; most notably, the
 			       iron-main-epf--current-ds)
 		       :size 4
 		       ;; :value-regexp "[0-9]+"
-		       :notify (lambda (w &rest ignore)
-				 (ignore ignore)
-				 (message "Directory blocks: <%s>."
-					  (widget-value w))
-				 (setf (iron-main-ds-rep-directory
-					iron-main-epf--current-ds)
-				       (widget-value w)))
+		       :notify
+		       (lambda (w &rest ignore)
+			 (ignore ignore)
+			 (message "Directory blocks: <%s>."
+				  (widget-value w))
+			 (setf (iron-main-ds-rep-directory
+				iron-main-epf--current-ds)
+			       (widget-value w)))
 
 		       :keymap
 		       iron-main-epf-editable-field-keymap
@@ -899,24 +924,29 @@ file system(s) that Emacs has direct access to; most notably, the
                  :notify
                  (lambda (&rest ignore)
 		   (ignore ignore)
-		   (setf (iron-main-ds-rep-name
-			  iron-main-epf--current-ds)
-			 (widget-value iron-main-epf--dsname-widget)
-				 
-			 (iron-main-ds-rep-dsorg
-			  iron-main-epf--current-ds)
-			 (widget-value iron-main-epf--dsorg-widget)
 
-			 ;; (iron-main-ds-rep-space-unit
-			 ;;  iron-main-epf--current-ds)
-			 ;; (widget-value iron-main-epf--space-unit-widget)
-			 )
-			   
+		   
+		   ;; (setf (iron-main-ds-rep-name
+		   ;; 	  iron-main-epf--current-ds)
+		   ;; 	 (widget-value iron-main-epf--dsname-widget)
+				 
+		   ;; 	 (iron-main-ds-rep-dsorg
+		   ;; 	  iron-main-epf--current-ds)
+		   ;; 	 (widget-value iron-main-epf--dsorg-widget)
+
+		   ;; 	 ;; (iron-main-ds-rep-space-unit
+		   ;; 	 ;;  iron-main-epf--current-ds)
+		   ;; 	 ;; (widget-value iron-main-epf--space-unit-widget)
+		   ;; 	 )
+		   
 		   (message "DD %s"
 			    (iron-main-ds-to-string
 			     iron-main-epf--current-ds)
-			    ))
-                 )
+			    )
+		   (iron-main-jcl-tmpl--run-allocation-job
+		    iron-main-epf--session
+		    :dsrep iron-main-epf--current-ds)
+                   ))
   (widget-insert "    ")
   (widget-create 'push-button
                  :value "View job buffer"
@@ -932,24 +962,26 @@ file system(s) that Emacs has direct access to; most notably, the
 			      dsname
 			      )
 		     (iron-main-jcl-tmpl--allocation-job
-		      (format "%s.jcl" dsname))
+		      ;; (format "%s.jcl" dsname)
+		      iron-main-epf--session
+		      :dsrep iron-main-epf--current-ds)
 		     ))
 		 )
   
-  (widget-insert "    ")
-  (widget-create 'push-button
-                 :value "Allocate and Save"
+  ;; (widget-insert "    ")
+  ;; (widget-create 'push-button
+  ;;                :value "Allocate and Save"
                  
-                 :notify
-                 (lambda (&rest ignore)
-		   (ignore ignore)
-		   (message "Data set name: %s."
-			    (iron-main-ds-rep-name
-			     iron-main-epf--current-ds)
-			    )
-		   (iron-main-epf--dataset-save session)
-		   )
-                )
+  ;;                :notify
+  ;;                (lambda (&rest ignore)
+  ;; 		   (ignore ignore)
+  ;; 		   (message "Data set name: %s."
+  ;; 			    (iron-main-ds-rep-name
+  ;; 			     iron-main-epf--current-ds)
+  ;; 			    )
+  ;; 		   (iron-main-epf--dataset-save session)
+  ;; 		   )
+  ;;               )
   
   (widget-insert "    ")
   (widget-create 'push-button
@@ -959,10 +991,11 @@ file system(s) that Emacs has direct access to; most notably, the
 		 (lambda (&rest ignore)
 		   (ignore ignore)
 		   (iron-main-epf--exit-panel)
-		   (message "Cancelled dataset '%s' mainframe allocation."
-			    (iron-main-ds-rep-name
-			     iron-main-epf--current-ds)
-			    )
+		   (message
+		    "Cancelled dataset '%s' mainframe allocation."
+		    (iron-main-ds-rep-name
+		     iron-main-epf--current-ds)
+		    )
 		   )
                )
 
@@ -1213,6 +1246,29 @@ PANEL must be a buffer or a buffer name."
     iron-main-epf--session))
 
 
+(cl-defun iron-main-epf--instance-banner (session
+					  &aux
+					  (pid (iron-main-hs-pid session))
+					  )
+  "Generates a banner with information about the mainframe.
+
+If no connection is available, the banner will indicate so."
+
+  (if pid
+      (format "%s running %s on %s:%s (%s) from %s"
+	      (iron-main-session-machine session)
+	      (iron-main-session-os-flavor session)
+	      (iron-main-hs-http-host session)
+	      (iron-main-hs-port session)
+	      pid
+	      (system-name))
+    (format "%s running %s not available from %s"
+	    (iron-main-session-machine session)
+	    (iron-main-session-os-flavor session)
+	    (system-name))
+    ))
+
+
 (defvar-local iron-main-epf--hercules-top-cmds-links ()
   "List of link widgets created for top panel commands.")
 
@@ -1227,20 +1283,45 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
 
 Notes:
 
-This function is an alias for `iron-main-frame-panel'.
+This function just calls `iron-main-frame-panel'.
 
 See Also:
 
-IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
+IRON-MAIN-FRAME-PANEL, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   
   (interactive)
   (iron-main-frame-panel machine os-flavor))
 
 
-(defalias 'iron-main-epf 'iron-main-frame)
+
+(defalias 'iron-main-epf 'iron-main-frame
+  "Creates the \\='top\\=' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
+
+Notes:
+
+This function is an alias for `iron-main-frame'.
+
+See Also:
+
+IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.")
 
 
-(defalias 'iron-main-frame-epf 'iron-main-frame)
+(defalias 'iron-main-frame-epf 'iron-main-frame
+  "Creates the \\='top\\=' IRON MAIN panel.
+
+The optional MACHINE and OS-FLAVOR arguments default to the values of
+the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.
+
+Notes:
+
+This function is an alias for `iron-main-frame'.
+
+See Also:
+
+IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR.")
 
 
 (cl-defun iron-main-frame-panel (&optional
@@ -1250,7 +1331,7 @@ IRON-MAIN-FRAME, IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
 				 (from-buffer (current-buffer))
 				 (instance-banner "")
 				 )
-  "Create the \\='top\\=' IRON MAIN panel.
+  "Creates the \\='top\\=' IRON MAIN panel.
 
 The optional MACHINE and OS-FLAVOR arguments default to the values of
 the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
@@ -1294,24 +1375,30 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
       (setq-local iron-main-hercules-pid pid)
       (setq-local iron-main-epf--session session)
 
-      (if pid
-	  (setf (iron-main-hs-pid session)
-		pid
+      (when pid
+	(setf (iron-main-hs-pid session) pid))
+
+      (setf instance-banner
+	    (iron-main-epf--instance-banner session))
+
+      ;; (if pid
+      ;; 	  (setf (iron-main-hs-pid session)
+      ;; 		pid
 		
-		instance-banner
-		(format "%s running %s on %s:%s (%s) from %s"
-			iron-main-machine
-			iron-main-os-flavor
-			iron-main-hercules-http-host
-			iron-main-hercules-http-port
-			pid
-			(system-name)))
-	(setf instance-banner
-	      (format "%s running %s not available from %s"
-		      iron-main-machine
-		      iron-main-os-flavor
-		      (system-name)))
-	)
+      ;; 		instance-banner
+      ;; 		(format "%s running %s on %s:%s (%s) from %s"
+      ;; 			iron-main-machine
+      ;; 			iron-main-os-flavor
+      ;; 			iron-main-hercules-http-host
+      ;; 			iron-main-hercules-http-port
+      ;; 			pid
+      ;; 			(system-name)))
+      ;; 	(setf instance-banner
+      ;; 	      (format "%s running %s not available from %s"
+      ;; 		      iron-main-machine
+      ;; 		      iron-main-os-flavor
+      ;; 		      (system-name)))
+      ;; 	)
 
       ;; Setting the Hercules OS directories.
       ;; Most setups (e.g., tk4- and Jay Moseleys's) assume a
@@ -1359,10 +1446,6 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   ;; Not running Hercules.
   (when (not (iron-main-running-machine "Hercules"))
     (message "IMFPF02I: Hercules not running.")
-    (setf instance-banner
-	  (format "%s running %s not available"
-		  iron-main-machine
-		  iron-main-os-flavor))
     )
 
   ;; Let's start!
@@ -1432,6 +1515,20 @@ where the relevant bits and pieces used by the emulator can be found."
 		 :size (+ 4
 			  (max (length os-dir)
 			       (length dasd-dir))))
+  (widget-insert "\n")
+  (widget-create 'iron-main-natnum-widget
+		 :value iron-main-hercules-http-port
+		 :tag "HTTP Port"
+		 :format " %v "
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size 8)
+  (widget-insert "\n")
+  (widget-create 'iron-main-natnum-widget
+		 :value iron-main-hercules-card-reader-port
+		 :tag "Reader Port"
+		 :format " %v "
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size 8)
   (widget-insert "\n\n")
   (widget-insert iron-main-epf--overline)
   (widget-insert "\n")
@@ -1444,11 +1541,13 @@ where the relevant bits and pieces used by the emulator can be found."
 (defvar-local iron-main-epf--hs-devinfo-ins-pt nil)
 
 
-(cl-defun iron-main-epf--hercules-clean-devlist (devtype devlist-string)
-   "Remove extra noise that is generated for a teminal output and format.
+(cl-defun iron-main-epf--hercules-clean-devlist (devtype
+						 devlist-string)
+   "Remove noise that is generated for a teminal output and format.
 
 DEVTYPE is one of the \"devlist\" possible arguments; DEVLIST-STRING
-is the string result from invoking the command to the running Hercules."
+is the string result from invoking the command to the running
+Hercules."
 
   ;; To understand this processing, check the output of the Hercules
   ;; command "devlist DEVTYPE".
@@ -1665,28 +1764,40 @@ HERCULES-PID is the emulator process id or NIL if none is running."
     (widget-insert "No Hercules process running\n"))
   (widget-insert "\n")
    
-  (widget-insert "OS folder:\n")
   (widget-create 'directory
 		 :value os-dir
 		 ;; :tag "OS   "
 		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-os-dir)
-		 ;; :format "%v"
+		 :format "OS Folder:    %v "
 		 ;; :entry-format "V %v"
 		 :keymap iron-main-epf-editable-field-keymap
 		 :size (+ 4
 			  (max (length os-dir)
 			       (length dasd-dir))))
-  (widget-insert "\n\n")
-  (widget-insert "DASDs:\n")
+  (widget-insert "\n")
   (widget-create 'directory
 		 :value dasd-dir
 		 ;; :tag "DASDs"
 		 ;; :tag (iron-main--shorten-pathname iron-main-hercules-dasd-dir)
-		 ;; :format "%v"
+		 :format "DASDs Folder: %v "
 		 :keymap iron-main-epf-editable-field-keymap
 		 :size (+ 4
 			  (max (length os-dir)
 			       (length dasd-dir))))
+  (widget-insert "\n\n")
+  (widget-create 'iron-main-natnum-widget
+		 :value iron-main-hercules-http-port
+		 :tag "HTTP Port"
+		 :format "HTTP Port:    %v "
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size 8)
+  (widget-insert "\n")
+  (widget-create 'iron-main-natnum-widget
+		 :value iron-main-hercules-card-reader-port
+		 :tag "Reader Port"
+		 :format "Reader Port:  %v "
+		 :keymap iron-main-epf-editable-field-keymap
+		 :size 8)
   (widget-insert "\n\n")
   )
 
