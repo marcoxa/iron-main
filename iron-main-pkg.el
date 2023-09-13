@@ -20,7 +20,7 @@
 
 ;;; Code:
 
-(define-package "IRON MAIN" "20230511.1"
+(define-package "IRON MAIN" "2023-09-11"
   "The Iron Main package.
 
 The Iron Main package is a collection of modes and code to allow
