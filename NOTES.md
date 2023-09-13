@@ -34,3 +34,10 @@ Still missing: comment syntax tables.
 New branch created to change panels.  Still unresolved: strings in JOB
 card (and possibly, anywhere in parameters).
 
+## 2023-09-11
+
+Session objects are nice, but I find myself just setfing many
+variables as buffer local.  Maybe this is something that should be
+cleaned up.
+
+
