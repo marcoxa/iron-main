@@ -56,10 +56,10 @@
 ;; in Emacs.
 
 
-;; Global variables (should be made constants).
+;; Global constants.
 
-(defvar iron-main-epf--overline (make-string 72 175))
-(defvar iron-main-epf--underline (make-string 72 ?_))
+(defconst iron-main-epf--overline (make-string 72 175))
+(defconst iron-main-epf--underline (make-string 72 ?_))
 
 
 ;; IRON MAIN EPF panels are mapped to buffers and windows.  A panel
@@ -234,6 +234,7 @@ This function is necessary because it is inexplicably absent from the
 `widget.el' library."
   (plist-get (cdr w) :notify))
 
+
 ;; In-panel navigation.
 ;;
 ;; The following functions *assume* that the first and last character in a
@@ -312,7 +313,7 @@ This function is necessary because it is inexplicably absent from the
   )
 
 
-;; Commans lists functions.
+;; Commands lists functions.
 
 (cl-defun iron-main-epf--find-command (cmd commands-alist)
   ;; (assoc cmd commands-alist 'string=)
@@ -329,7 +330,9 @@ This function is necessary because it is inexplicably absent from the
                  
 		 :validate
 		 (lambda (cmd)
-		   (<= 1 (widget-value cmd) (length iron-main-epf--cmds)))
+		   (<= 1
+		       (widget-value cmd)
+		       (length iron-main-epf--cmds)))
 		 
 		 :action
 		 (lambda (cmd &optional event)
@@ -396,9 +399,10 @@ This function is necessary because it is inexplicably absent from the
 
 ;;; iron-main-epf--make-modeline
 
-(cl-defun iron-main-epf--make-mode-line (&optional
-					 (extra-info " Use 'Q', 'q', or '<F3>' to quit")
-					 )
+(cl-defun iron-main-epf--make-mode-line
+    (&optional
+     (extra-info " Use 'Q', 'q', or '<F3>' to quit")
+     )
   "Creates the (default) mode line for the IRON MAIN EPF windows."
   
   (identity
@@ -512,9 +516,10 @@ Note that `overwrite-mode' is turned on in the panels."
     )
 
   (widget-insert
-   (propertize (format "Use `[Qq]' or `PF3' to go back to previous panel.")
-	       'face '(fixed-pitch-serif :weight bold)
-	       ))
+   (propertize
+    (format "Use `[Qq]' or `PF3' to go back to previous panel.")
+    'face '(fixed-pitch-serif :weight bold)
+    ))
   )
 
 
@@ -523,50 +528,54 @@ Note that `overwrite-mode' is turned on in the panels."
 
 (cl-defun iron-main-epf--dsname-item-field ()
   "Create the `dsname' editable-field widget in the IRON MAIN panel."
+  
   (setq iron-main-epf--dsname-widget
-	(widget-create 'editable-field
-                       :size 46	   ; A name is at most 44 plus quotes.
+	(widget-create
+	 'editable-field
+         :size 46		   ; A name is at most 44 plus quotes.
                        
-                       :format "Data set name: %v " ; Text after the field!
+         :format "Data set name: %v "	; Text after the field!
                        
-		       :value
-                       (iron-main-ds-rep-name iron-main-epf--current-ds)
-		       ;; (iron-main-ds-rep-name iron-main-epf--current-ds)
+	 :value
+         (iron-main-ds-rep-name iron-main-epf--current-ds)
+	 ;; (iron-main-ds-rep-name iron-main-epf--current-ds)
                        
-		       :notify
-		       (lambda (w &rest ignore)
-			 (ignore ignore)
-			 (message "DSN: <%s>."
-				  (widget-value w))
-			 (setf (iron-main-ds-rep-name
-				iron-main-epf--current-ds)
-			       (widget-value w)))
+	 :notify
+	 (lambda (w &rest ignore)
+	   (ignore ignore)
+	   (message "DSN: <%s>."
+		    (widget-value w))
+	   (setf (iron-main-ds-rep-name
+		  iron-main-epf--current-ds)
+		 (widget-value w)))
                        
-		       :keymap
-		       iron-main-epf-editable-field-keymap
-		       ))
+	 :keymap
+	 iron-main-epf-editable-field-keymap
+	 ))
   (widget-insert "\n")
+  
   (setf iron-main-epf--vol-widget
-	(widget-create 'editable-field
-                       :size 6
-		       :format "Volume serial: %v "
+	(widget-create
+	 'editable-field
+         :size 6
+	 :format "Volume serial: %v "
                        
-		       :value
-                       (iron-main-ds-rep-vol iron-main-epf--current-ds)
+	 :value
+         (iron-main-ds-rep-vol iron-main-epf--current-ds)
                        
-		       :notify
-		       (lambda (w &rest ignore)
-			 (ignore ignore)
-			 (message "VOL: <%s>."
-				  (widget-value w))
-			 (setf (iron-main-ds-rep-vol
-				iron-main-epf--current-ds)
-			       (widget-value w)))
+	 :notify
+	 (lambda (w &rest ignore)
+	   (ignore ignore)
+	   (message "VOL: <%s>."
+		    (widget-value w))
+	   (setf (iron-main-ds-rep-vol
+		  iron-main-epf--current-ds)
+		 (widget-value w)))
                        
-		       :keymap
-		       iron-main-epf-editable-field-keymap
+	 :keymap
+	 iron-main-epf-editable-field-keymap
 
-		       ))
+	 ))
     )
 
 
@@ -613,7 +622,8 @@ file system(s) that Emacs has direct access to; most notably, the
 	      (iron-main-session-os-flavor session))
 
   (setq-local iron-main-epf--tag "Hercules datasets")
-  (setq-local iron-main-epf--cmds iron-main-epf--hercules-dsfs-commands)
+  (setq-local iron-main-epf--cmds
+	      iron-main-epf--hercules-dsfs-commands)
   
   ;; (iron-main-epf--title-field "Dataset and file system handling panel")
   (setq-local header-line-format
@@ -1893,8 +1903,8 @@ presentation in the IRON MAIN panel/buffer."
 (cl-defun iron-main-epf--hercules-help (session &rest args)
   "Hercules help panel.
 
-Given a SESSION sets up the \"help\" panel.  ARGS are passed downstream
-if needed."
+Given a SESSION sets up the \"help\" panel.  ARGS are passed
+downstream if needed."
 
   (ignore args)
   
@@ -1920,6 +1930,9 @@ if needed."
   (setq-local iron-main-os-flavor
 	      (iron-main-session-os-flavor session))
 
+  (setq-local iron-main-hercules-pid
+	      (iron-main-hs-pid session))
+
   (setq-local iron-main-epf--tag "Hercules help")
   
   ;; (iron-main-epf--title-field "Hercules help")
@@ -1933,94 +1946,112 @@ if needed."
   ;; (message ">>> Point %s" help-ins-pt)
   (setq-local
    iron-main-epf--help-cmd-widget
-   (widget-create 'editable-field
-		  :size 10
-		  :value ""		; Initial value.
-		  :format "Hercules command (empty for a list): %v "
+   (widget-create
+    'editable-field
+    :size 10
+    :value ""				; Initial value.
+    :format "Hercules command (empty for a list): %v "
 
-		  :keymap
-		  iron-main-epf-editable-field-keymap
+    :keymap
+    iron-main-epf-editable-field-keymap
 
-		  :action
-		  (lambda (w &rest ignore)
-		    (ignore ignore)
-		    (if (string-equal "" (widget-value w))
-			(message "IMHS00I: Available commands... (%s)"
-				 iron-main-epf--help-ins-pt)
-		      (message "IMHS00I: Getting help for '%s' (%s)."
-			       (widget-value w)
-			       iron-main-epf--help-ins-pt)
-		      )
-		    (let ((helpstring
-			   (iron-main-hercules-help (widget-value w)
-						    :check-listening t))
+    :action
+    (lambda (w &rest ignore)
+      (ignore ignore)
+      (if iron-main-hercules-pid
+	  (progn
+	    (if (string-equal "" (widget-value w))
+		(message "IMHS00I: Available commands... (%s)"
+			 iron-main-epf--help-ins-pt)
+	      (message "IMHS00I: Getting help for '%s' (%s)."
+		       (widget-value w)
+		       iron-main-epf--help-ins-pt)
+	      )
+	    (let ((helpstring
+		   (iron-main-hercules-help (widget-value w)
+					    :check-listening t))
 			  
-			  ;; (helpstring-clean "")
-			  )
-		      (with-current-buffer-window 
-		       "*IRON MAIN Hercules help display*"
-		       '(
-			 ;; display-buffer-below-selected
-			 display-buffer-in-side-window
-			 (side . bottom)
-			 (window-height . 0.75)
-			 )
-		       
-		       nil		; Null QUIT-ACTION
-
-		       (cond (helpstring
-			      (insert (iron-main-epf--hercules-clean-help
-				       helpstring)
-				      ))
-			     (t
-			      (insert (format "\nHelp for %s would appear here (%s)"
-					     (widget-value w)
-					     (current-time-string)))
-			      )
-			     )
-		       
-		       (help-mode)
-		       (iron-main-mode)
-		       )))		; Lambda
-		  
-		  ;; (lambda (w &rest ignore)
-		  ;;   (ignore ignore)
-		  ;;   (if (string-equal "" (widget-value w))
-		  ;; 	(message "IMHS00I: Available commands... (%s)"
-		  ;; 	       iron-main-epf--help-ins-pt)
-		  ;;     (message "IMHS00I: Getting help for '%s' (%s)."
-		  ;; 		 (widget-value w)
-		  ;; 		 iron-main-epf--help-ins-pt)
-		  ;;     )
-		  ;;   (let ((helpstring
-		  ;; 	   (iron-main-hercules-help (widget-value w)
-		  ;; 				    :check-listening t))
-			  
-		  ;; 	  (helpstring-clean "")
-		  ;; 	  )
-		  ;;     (when helpstring
-		  ;; 	(when iron-main-epf--help-ins-pt
-		  ;; 	  ;; (message ">>> Clean helpstring.")
-		  ;; 	  (setq helpstring-clean
-		  ;; 		(iron-main-epf--hercules-clean-help
-		  ;; 		 helpstring)
-		  ;; 		)
-		  ;; 	  ;; (message ">>> Cleaned helpstring.")
-		  ;; 	  (goto-char iron-main-epf--help-ins-pt)
-		  ;; 	  (save-excursion
-		  ;; 	    (let ((inhibit-read-only t)
-		  ;; 		  (inhibit-modification-hooks t)
-		  ;; 		  )
-		  ;; 	      (delete-region
-		  ;; 	       iron-main-epf--help-ins-pt
-		  ;; 	       (point-max))))
-					 
-		  ;; 	  (save-excursion
-		  ;; 	    ;; Clean up "HHC0*I" messages before inserting.
-		  ;; 	    (widget-insert helpstring-clean)
-		  ;; 	    )))
-		  ;;     )) ; Lambda
+		  ;; (helpstring-clean "")
+		  (help-buffer-header-line "")
 		  )
+	      (with-current-buffer-window 
+		  "*IRON MAIN Hercules help display*"
+		  '(
+		    ;; display-buffer-below-selected
+		    display-buffer-in-side-window
+		    (side . bottom)
+		    (window-height . 0.75)
+		    )
+		       
+		  nil			; Null QUIT-ACTION
+
+		(cond (helpstring
+		       (insert (iron-main-epf--hercules-clean-help
+				helpstring)
+			       )
+		       (if (string= "" helpstring)
+			   (setq help-buffer-header-line
+				 (format "IRON Main help Hercules commands."))
+			 (setq help-buffer-header-line
+			       (format "IRON Main help for '%s' Hercules command."
+				       (widget-value w)))
+			 )
+		       )
+		      (t
+		       (insert (format "\nHelp for %s would appear here (%s)"
+				       (widget-value w)
+				       (current-time-string)))
+		       )
+		      )
+		(setq-local header-line-format
+			    help-buffer-header-line)
+		(help-mode)
+		;; (iron-main-mode)
+		)))
+	;; pid NIL; no connection.
+	(message (format "IMHPF01W: %s."
+			 (iron-main-epf--instance-banner session)))
+	))	; Lambda
+
+    
+    ;; (lambda (w &rest ignore)
+    ;;   (ignore ignore)
+    ;;   (if (string-equal "" (widget-value w))
+    ;; 	(message "IMHS00I: Available commands... (%s)"
+    ;; 	       iron-main-epf--help-ins-pt)
+    ;;     (message "IMHS00I: Getting help for '%s' (%s)."
+    ;; 		 (widget-value w)
+    ;; 		 iron-main-epf--help-ins-pt)
+    ;;     )
+    ;;   (let ((helpstring
+    ;; 	   (iron-main-hercules-help (widget-value w)
+    ;; 				    :check-listening t))
+			  
+    ;; 	  (helpstring-clean "")
+    ;; 	  )
+    ;;     (when helpstring
+    ;; 	(when iron-main-epf--help-ins-pt
+    ;; 	  ;; (message ">>> Clean helpstring.")
+    ;; 	  (setq helpstring-clean
+    ;; 		(iron-main-epf--hercules-clean-help
+    ;; 		 helpstring)
+    ;; 		)
+    ;; 	  ;; (message ">>> Cleaned helpstring.")
+    ;; 	  (goto-char iron-main-epf--help-ins-pt)
+    ;; 	  (save-excursion
+    ;; 	    (let ((inhibit-read-only t)
+    ;; 		  (inhibit-modification-hooks t)
+    ;; 		  )
+    ;; 	      (delete-region
+    ;; 	       iron-main-epf--help-ins-pt
+    ;; 	       (point-max))))
+					 
+    ;; 	  (save-excursion
+    ;; 	    ;; Clean up "HHC0*I" messages before inserting.
+    ;; 	    (widget-insert helpstring-clean)
+    ;; 	    )))
+    ;;     )) ; Lambda
+    )
    )
 	
   (widget-insert "\n")
