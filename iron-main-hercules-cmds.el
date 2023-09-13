@@ -57,6 +57,10 @@
 ;; luxury at the end of 2020.
 
 
+(defconst iron-main-hercules--+timeout+ 30
+  "The timeout before bailing out on a Hercules HTTP request.")
+
+
 (cl-defmacro define-hercules-cmd (cmd args &body forms)
   "A useful macro to avoid repeating too much boilerplate.
 
@@ -77,7 +81,7 @@ in the KEYS &rest variable."
 		     iron-main-hercules-http-host)
 		    (port
 		     iron-main-hercules-http-port)
-		    (timeout 15)
+		    (timeout iron-main-hercules--+timeout+)
 		    (check-listening nil)
 		    ))
        ,@forms)))
