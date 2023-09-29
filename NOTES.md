@@ -55,3 +55,10 @@ unpredictable for my tastes.  If anyone wants to jump in with a
 redesign, I'll be happy to adopt it.
 
 
+## 2023-09-29
+
+Added "column panel logic" working on the "subpanel logic" mentioned
+above.  It looks like this could be fully generalized and factored
+out.
+
+
