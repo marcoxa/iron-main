@@ -134,16 +134,16 @@ The value can be either a string or a symbol.")
   "The IRON MAIN Panel mode key map.
 
 The key map inherits from `widget-keymap'.
-The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
-panel or the whole IRON MAIN panel system.")
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\='
+exit the current panel or the whole IRON MAIN panel system.")
 
 
 (defvar iron-main-epf-mode-top-panel-keymap iron-main-epf-mode-keymap
   "The IRON MAIN Panel mode key map.
 
 The key map inherits from `widget-keymap'.
-The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
-panel."
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\='
+exit the current panel."
   )
 
 
@@ -160,8 +160,8 @@ panel."
   "The IRON MAIN Panel mode key map.
 
 The key map inherits from `widget-keymap'.
-The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\=' exit the current
-panel."
+The keys \\='<f3>\\=' (that is, \\='PF3\\='), \\='q\\=' and \\='Q\\='
+exit the current panel."
   )
 
 
@@ -280,9 +280,14 @@ This function is necessary because it is inexplicably absent from the
      )
     ("Exit"   iron-main-epf--exit-panel
      :header "Exit the IRON MAIN current panel or top-level"
+     ;; We just want to exit, no questions asked...
      :notify ,(lambda (w &rest args)
-		(ignore w args)
-		(iron-main-epf--exit-panel)))
+      		(ignore w args)
+      		(iron-main-epf--exit-panel))
+     )
+    ("Test..." iron-main-epf--test-subpanels
+     :header "Iron Main Test handle..."
+     )
     )
   "A \\='commands alist\\=' for the IRON MAIN top SPF panel."
   )
@@ -903,8 +908,7 @@ file system(s) that Emacs has direct access to; most notably, the
 		       :format "Directory blocks: %v "
 		       :value (iron-main-ds-rep-directory
 			       iron-main-epf--current-ds)
-		       :size 4
-		       ;; :value-regexp "[0-9]+"
+		       :size 4		       ;; :value-regexp "[0-9]+"
 		       :notify
 		       (lambda (w &rest ignore)
 			 (ignore ignore)
@@ -1571,6 +1575,7 @@ Hercules."
 	   "HHC0160[23]I +devlist.*$"
 	   ""
 	   devlist-string))
+    
     ;; Remove extra message for empty lists.
     (setq result
 	  (replace-regexp-in-string
@@ -1650,6 +1655,23 @@ Hercules."
     ))
 
 
+
+(defconst iron-main-epf--+hercules-devtypes+
+  (list "CTCA"
+	"DASD"
+	"DSP"
+	"FCP"
+	"LINE"
+	"OSA"
+	"PCH"
+	"PRT"
+	"RDR"
+	"TAPE"
+	)
+  "List of available Hercules device types." ; Possibly IBM ones.
+  )
+
+
 (cl-defun iron-main-epf--hercules-system (session &rest args)
   "Hercules system inspection panel.
 
@@ -1693,10 +1715,7 @@ if needed."
   ;; Devices retrievable from the Hercules command 'devlist'.
   ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
 
-  (let ((devtypes
-	 (list "CTCA" "DASD" "DSP" "FCP" "LINE" "OSA" "PCH" "PRT"
-	       "RDR" "TAPE"))
-	)
+  (let ((devtypes iron-main-epf--+hercules-devtypes+))
   
     (widget-insert "Available devices\n\n")
 
@@ -2065,16 +2084,372 @@ downstream if needed."
   )
 
 
+;;; Panels and Subpanels.
+;;; =====================
+;;;
+;;; Panels and subpanels are, FTTB, organized as columns of windows.
+;;; The idea id to have a "main" panel with "subpanels".  Panels are
+;;; actually buffers.
+;;;
+;;; The buffer local variables serve as fields.
+
+(defvar-local iron-main-epf--is-top-panel nil
+  "Indicates whether the buffer/panel/window is a \\='top\\=' one.")
+
+
+(defvar-local iron-main-epf--parent-panel nil
+  "Reference to the \\='parent\\=' panel or NIL.")
+
+
+(defvar-local iron-main-epf--top-panel-window nil
+  "Reference to the window of the \\='top\\=' panel or NIL.")
+
+
+(defvar-local iron-main-epf--subpanel-window nil
+  "Reference to the window of the \\='lower\\=' subpanel or NIL.")
+
+
+(defvar-local iron-main-epf--panel-saved-modeline nil
+  "Saved modeline for panel.
+
+Creating a subpanel may remove the buffer modeline; removing the
+subpanel must restore it.")
+
+
+(cl-defun iron-main-epf--dump-panel (panel)
+  (with-current-buffer panel
+    (message "*")
+    (message "IMEPFDP01I: %s panel." panel)
+    (message "IMEPFDP01I: is top panel %s." iron-main-epf--is-top-panel)
+    (message "IMEPFDP01I: parent panel %s." iron-main-epf--parent-panel)
+    (message "IMEPFDP01I: saved modeline %s." iron-main-epf--panel-saved-modeline)
+    (message "*")
+    ))
+
+
+(cl-defun iron-main-epf--make-panel (session
+				     buffer-or-name
+				     &rest keys
+				     &key
+				     (setup (lambda (&rest args)
+					      (ignore args)
+					      nil))
+				     
+				     &allow-other-keys)
+  ;; (ignore args)
+  
+  (cl-assert (iron-main-session-p session) t
+	     "IMEPF0E: SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (switch-to-buffer buffer-or-name)
+    
+  (kill-all-local-variables)
+    
+  (let ((inhibit-read-only t))
+    (erase-buffer))
+
+  (iron-main-epf-mode)
+
+  ;; Now that we have the session, some of these are repetitions.
+
+  (setq-local iron-main-epf--session session)
+  
+  (setq-local iron-main-machine
+	      (iron-main-session-machine session))
+  (setq-local iron-main-os-flavor
+	      (iron-main-session-os-flavor session))
+
+  (setq-local iron-main-hercules-pid
+	      (iron-main-hs-pid session))
+
+  (setq-local iron-main-epf--is-top-panel t
+	      iron-main-epf--parent-panel nil
+	      iron-main-epf--subpanel-window nil
+	      iron-main-epf--top-panel-window (selected-window)
+	      iron-main-epf--saved-modeline mode-line-format
+	      )
+
+  (cl-remf keys :setup)
+
+  (prog1 (apply setup keys)
+    
+    (iron-main-epf--dump-panel (current-buffer))
+    (message "IMEPF01I: panel %s set up."
+	     (buffer-name))	; Assume SETUP does not switch buffer.
+    ))
+				     
+
+
+(cl-defun iron-main-epf--make-subpanel (buffer-or-name
+					setup-function
+					&rest keys
+					&key
+					(top-panel (current-buffer))
+					(parent-panel (current-buffer))
+					(window-height 0.75)
+					(header-line
+					 "IRON MAIN Subpanel...")
+					(local-keymap
+					 iron-main-epf-mode-sub-panel-keymap)
+					(keep-modeline nil)
+					&allow-other-keys
+					)
+  "Sets up a \\='subpanel\\='.
+
+The function is called with a BUFFER-OR-NAME which will become the
+buffer displayed in the subpanel.  The buffer in the subpanel is
+erased.  The buffer, after being erased is set up by invoking
+SETUP-FUNCTION within a call to WITH-CURRENT-BUFFER; the
+SETUP-FUNCTION is called with the keyword arguments passed to
+`iron-main-epf--make-subdisplay'.  Hence, SETUP-FUNCTION, if not
+defined via `cl-defun', can be a lambda essentially taking a &rest
+p-list.
+
+The WINDOW-HEIGHT argument (default 0.75) is the percentage of the
+selected window (the \\='main panel\\=') that the subpanel will
+occupy.  HEADER-LINE, if not nil will be displayed as the header of
+the subpanel.  LOCAL-KEYMAP is the keymap used by the subpanel, it
+defaults to `iron-main-epf-mode-sub-panel-keymap', which makes some
+assumptions about \\='quitting\\=' the subpanel.  KEEP-MODELINE, if
+nil (the default) hides/moves the modeline of the \\='main panel\\='.
+"
+  ;; I could use `with-current-buffer-window', but it may not work
+  ;; with Emacsen earlier than 28.1
+
+  (ignore top-panel parent-panel)
+  
+  (let ((panel-display-window (selected-window)) ; This and the next not quite right.
+	(panel-display-buffer (current-buffer))
+	(subpanel-display-buffer
+	 (get-buffer-create
+	  ;; "*IRON MAIN Hercules subdisplay display*"
+	  buffer-or-name))
+	)
+
+    (display-buffer subpanel-display-buffer
+		    `(
+		      ;; display-buffer-below-selected
+		      display-buffer-in-side-window
+		      (side . bottom)
+		      (window-height . ,window-height)
+		      ))
+
+    (setq-local iron-main-epf--subpanel-window
+		(get-buffer-window subpanel-display-buffer))
+
+    (unless keep-modeline
+      (setq-local mode-line-format nil)
+      )
+
+    (with-current-buffer subpanel-display-buffer
+      (message "IMPFS01I: subpanel display buffer is %s."
+	       (current-buffer))
+
+      (kill-all-local-variables)
+      (let ((inhibit-read-only t))
+	(erase-buffer))
+
+      (setq-local iron-main-epf--is-top-panel
+		  nil
+
+		  iron-main-epf--parent-panel
+		  panel-display-buffer
+
+		  iron-main-epf--top-panel-window
+		  panel-display-window
+
+		  iron-main-epf--saved-modeline
+		  mode-line-format
+		  )
+
+      (when header-line
+	(setq-local header-line-format header-line))
+
+      ;; Use the proper local map for proper killing of subpanels
+      ;; ...
+
+      (use-local-map local-keymap)
+
+      ;; Add subpanel stuff here.
+
+      (cl-remf keys :top-panel)
+      (cl-remf keys :parent-panel)
+      
+      (prog1 (apply setup-function keys)
+
+	(iron-main-epf--dump-panel (current-buffer))
+	
+	(message "IMPFS02I: subpanel display set up.")
+	))
+    ))
+
+
+(cl-defun iron-main-epf--exit-top-panel (&optional
+					 (panel-to-exit
+					  (current-buffer)))
+  (interactive)
+
+  (with-current-buffer panel-to-exit
+
+    (message "*")
+    (message "IMEPFETP0I: exiting top panel %s." panel-to-exit)
+    
+    (when iron-main-epf--subpanel-window
+      (let ((sp-buffer (window-buffer iron-main-epf--subpanel-window)))
+	(message "IMEPFETP1I: exiting sub panel window %s (buffer %s)."
+		 iron-main-epf--subpanel-window
+		 sp-buffer
+		 )
+	(iron-main-epf--exit-subpanel sp-buffer)
+	(iron-main-epf--cleanup-subpanel-exit panel-to-exit)
+	))
+
+    (iron-main-epf--exit-panel panel-to-exit)
+    ))
+
+
+(cl-defun iron-main-epf--cleanup-subpanel-exit (panel)
+  "Internal function to be called after a subpanel exited."
+
+  (message "*")
+  (message "IMEPFCSE1I: cleanup sub panel exit %s." panel)
+  (with-current-buffer panel
+    (when iron-main-epf--panel-saved-modeline
+      (message "IMEPFCSE2I: resetting modeline %s."
+	       iron-main-epf--panel-saved-modeline)
+      (setq-local mode-line-format
+		  iron-main-epf--panel-saved-modeline))
+
+    (message "IMEPFCSE3I: setting subpanel window to NIL.")
+    (setq-local iron-main-epf--subpanel-window nil))
+  )
+
+
+(cl-defun iron-main-epf--exit-subpanel (&optional
+					(subpanel-to-exit
+					 (current-buffer))
+					)
+  (interactive)
+
+  (with-current-buffer subpanel-to-exit
+    (let ((parent-panel iron-main-epf--parent-panel)
+	  (sp-buffer (window-buffer iron-main-epf--subpanel-window))
+	  )
+
+      (cl-assert parent-panel nil
+		 "IMEPFESP01E: exiting subpanel %s with no parent."
+		 subpanel-to-exit)
+
+      (message "*")
+      (message "IMEPFESP0I: exiting sub panel %s." subpanel-to-exit)
+      (when iron-main-epf--subpanel-window
+	(message "IMEPFESP1I: exiting sub panel window %s."
+		 iron-main-epf--subpanel-window)
+	(iron-main-epf--exit-subpanel sp-buffer)
+	(iron-main-epf--cleanup-subpanel-exit subpanel-to-exit)
+	)
+
+      ;; (with-current-buffer parent-panel
+      ;; 	(setq-local iron-main-epf--subpanel-window nil)
+
+      ;; 	(when iron-main-epf--panel-saved-modeline
+      ;; 	  (setq-local mode-line-format
+      ;; 		      iron-main-epf--panel-saved-modeline))
+      ;; 	)
+
+      (message "IMEPFESP02I: quitting window %s."
+	       (selected-window))
+      (message "IMEPFESP02I: for buffer %s."
+	       subpanel-to-exit)
+      (message "IMEPFESP02I: with window %s."
+	       (get-buffer-window subpanel-to-exit))
+      (quit-window t (get-buffer-window subpanel-to-exit))
+
+      ;; Finally we tell the parent to clean up this subpanel.
+      (iron-main-epf--cleanup-subpanel-exit parent-panel)
+      ))
+  )
+
+
+;;; Test subpanels.
+;;; ===============
+
+(defvar iron-main-epf--test-toppanel-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-keymap)
+    (define-key km (kbd "<f3>") 'iron-main-epf--exit-top-panel)
+    (define-key km (kbd "q") 'iron-main-epf--exit-top-panel)
+    (define-key km (kbd "Q") 'iron-main-epf--exit-top-panel)
+    km
+    )
+  )
+
+
+(defvar iron-main-epf--test-subpanel-keymap
+  (let ((km (make-sparse-keymap)))
+    (set-keymap-parent km widget-keymap)
+    (define-key km (kbd "<f3>") 'iron-main-epf--exit-subpanel)
+    (define-key km (kbd "q") 'iron-main-epf--exit-subpanel)
+    (define-key km (kbd "Q") 'iron-main-epf--exit-subpanel)
+    km
+    )
+  )
+
+
+(cl-defun iron-main-epf--test-subpanels (session &rest args)
+  "Test functionality for subpanels.
+
+This function is just a placeholder for testing stuff.
+"
+  (ignore args)
+  (cl-assert (iron-main-session-p session) t
+	     "IMPTS0E: SESSION %S is not a `iron-main-session'"
+	     session)
+
+  (iron-main-epf--make-panel
+   session
+   "*IRON MAIN Subpanel Test TOP*"
+   :setup
+   (lambda (&rest args)
+     (ignore args)
+     (use-local-map iron-main-epf--test-toppanel-keymap)
+     (setq-local header-line-format "IMEPFTS01I")
+     (widget-insert "\n\nTop panel\n")
+     (widget-create
+      'push-button
+      :value "Make Subpanel"
+      :action
+      (lambda (&rest args)
+	(ignore args)
+	(iron-main-epf--make-subpanel
+	 "IRON MAIN SUBPANEL"
+	 (lambda (&rest args)
+	   (ignore args)
+	   (widget-insert "\nSubpanel\n")
+	   (use-local-map iron-main-epf--test-subpanel-keymap)
+	   (widget-setup)
+	   )))
+	 )
+     (prog1 (widget-setup)
+       ;; (widget-forward 1)
+       (iron-main-epf--goto-first-widget))
+     )
+   )
+  )
+
+
 ;;; Panel navigation.
 ;;; =================
 
 (cl-defun iron-main-epf--exit-panel (&optional
-					(panel-to-exit (current-buffer)))
+				     (panel-to-exit (current-buffer)))
   "Exit the current panel \\='popping\\=' the \\='stack\\=' of panels.
 
 PANEL-TO-EXIT is the panel to exit, defaulting to the current buffer.
 If PANEL-TO-EXIT is not an IRON-MAIN panel, then this function has no
-effect.  If the \\='back\\=' buffer is not live"
+effect.  If the \\='back\\=' buffer is not live just switch to the
+buffer that Emacs things is best."
 
   (interactive)
 
@@ -2104,6 +2479,7 @@ effect.  If the \\='back\\=' buffer is not live"
 	  (switch-to-buffer nil)
 	  (kill-buffer panel-to-exit))
 	))))
+
 
 
 (cl-defun iron-main-epf--invoke-panel
