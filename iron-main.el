@@ -3,13 +3,13 @@
 
 ;;; iron-main.el
 ;;
-;; See the file COPYING license and copyright information.q
+;; See the file COPYING license and copyright information.
 ;;
 ;; Author: Marco Antoniotti <marcoxa [at] gmail.com>
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2023-09-06.1
+;; Version: 2023-09-28.1
 ;;
 ;; Keywords: languages, operating systems.
 
