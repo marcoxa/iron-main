@@ -35,6 +35,50 @@
 (require 'iron-main-session)
 
 
+;;;; Useful functions.
+
+(cl-defun iron-main--format-message (&optional
+				     (im-module "")
+				     (im-function "")
+				     (im-number 0)
+				     (im-msg-kind "I")
+				     (msg-format "")
+				     &rest args)
+  (let ((fmt (apply 'format msg-format args)))
+    (format "IM%s%s%02d%s: %s"
+	    im-module
+	    im-function
+	    im-number
+	    im-msg-kind
+	    fmt)))
+
+
+(cl-defun iron-main-message (&optional
+			     (im-module "")
+			     (im-function "")
+			     (im-number 0)
+			     (im-msg-kind "I")
+			     (msg-format "")
+			     &rest args)
+  "Uses `message' to output a \\='IRON-MAIN\\=' formatted message.
+
+The formatted message starts with \"IM\" followed by IM-MODULE,
+IM-FUNCTION, IM-NUMBER, IM-MSG-KIND.  MSG-FORMAT and ARGS are handled
+iternally by `format'.  IM-NUMBER should be an integer in the range
+0..99; it is written out zero-padded to the left.  IM-MSG-KIND is a
+one letter code, traditionally \"I\" for \"information\", \"W\" for
+\"warning\", \"E\" for \"error\", and \"A\" for \"action\".
+"
+  (message
+   (apply 'iron-main--format-message
+	  im-module
+	  im-function
+	  im-number
+	  im-msg-kind
+	  msg-format
+	  args)))
+
+
 ;;;; Mainframe setup.
 
 (defun iron-main-running-os (os-flavor)
