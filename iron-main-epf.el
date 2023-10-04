@@ -9,7 +9,7 @@
 ;;
 ;; Created: July 20th, 2023.
 ;;
-;; Version: 2023-09-06.1
+;; Version: 2023-10-04.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -2119,10 +2119,24 @@ subpanel must restore it.")
 (cl-defun iron-main-epf--dump-panel (panel)
   (with-current-buffer panel
     (message "*")
-    (message "IMEPFDP01I: %s panel." panel)
-    (message "IMEPFDP01I: is top panel %s." iron-main-epf--is-top-panel)
-    (message "IMEPFDP01I: parent panel %s." iron-main-epf--parent-panel)
-    (message "IMEPFDP01I: saved modeline %s." iron-main-epf--panel-saved-modeline)
+    (iron-main-message "EPF" "DP" 1 "I" "%s panel." panel)
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "panel window %s."
+		       (get-buffer-window panel))
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "is top panel %s." iron-main-epf--is-top-panel)
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "saved modeline: %s."
+		       (not (null iron-main-epf--panel-saved-modeline)))
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "modeline: %s."
+		       (not (null mode-line-format)))
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "parent panel %s." iron-main-epf--parent-panel)
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "top panel window %s." iron-main-epf--top-panel-window)
+    (iron-main-message "EPF" "DP" 1 "I"
+		       "subpanel window %s." iron-main-epf--subpanel-window)
     (message "*")
     ))
 
@@ -2141,6 +2155,11 @@ subpanel must restore it.")
   (cl-assert (iron-main-session-p session) t
 	     "IMEPF0E: SESSION %S is not a `iron-main-session'"
 	     session)
+
+   (message "*")
+   (iron-main-message "EPF" "MP" 0 "I"
+		      "making panel %s."
+		      buffer-or-name)
 
   (switch-to-buffer buffer-or-name)
     
@@ -2163,12 +2182,18 @@ subpanel must restore it.")
   (setq-local iron-main-hercules-pid
 	      (iron-main-hs-pid session))
 
+  ;; Panel setup.
+
   (setq-local iron-main-epf--is-top-panel t
 	      iron-main-epf--parent-panel nil
 	      iron-main-epf--subpanel-window nil
 	      iron-main-epf--top-panel-window (selected-window)
-	      iron-main-epf--saved-modeline mode-line-format
+	      iron-main-epf--panel-saved-modeline mode-line-format
 	      )
+
+  (iron-main-message "EPF" "MP" 1 "I"
+		     "saved modeline: %s."
+		     (not (null iron-main-epf--panel-saved-modeline)))
 
   (cl-remf keys :setup)
 
@@ -2178,7 +2203,6 @@ subpanel must restore it.")
     (message "IMEPF01I: panel %s set up."
 	     (buffer-name))	; Assume SETUP does not switch buffer.
     ))
-				     
 
 
 (cl-defun iron-main-epf--make-subpanel (buffer-or-name
@@ -2218,6 +2242,11 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
   ;; with Emacsen earlier than 28.1
 
   (ignore top-panel parent-panel)
+
+  (message "*")
+  (iron-main-message "EPF" "MSP" 0 "I"
+		     "making subpanel %s."
+		     buffer-or-name)
   
   (let ((panel-display-window (selected-window)) ; This and the next not quite right.
 	(panel-display-buffer (current-buffer))
@@ -2235,20 +2264,39 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
 		      (window-height . ,window-height)
 		      ))
 
+    (iron-main-message "EPF" "MSP" 1 "I"
+		       "subpanel %s displayed."
+		       buffer-or-name)
+
+    (iron-main-epf--dump-panel (current-buffer))
+
     (setq-local iron-main-epf--subpanel-window
 		(get-buffer-window subpanel-display-buffer))
 
+    (iron-main-message "EPF" "MSP" 2 "I"
+		       "saved modeline \"%s\"."
+		       iron-main-epf--panel-saved-modeline)
+    
     (unless keep-modeline
+      (iron-main-message "EPF" "MSP" 3 "I"
+			 "setting mode-line to NIL.")
       (setq-local mode-line-format nil)
       )
 
     (with-current-buffer subpanel-display-buffer
-      (message "IMPFS01I: subpanel display buffer is %s."
-	       (current-buffer))
+      (iron-main-message "EPF" "MSP" 4 "I"
+			 "subpanel display buffer is %s."
+			 (current-buffer))
 
       (kill-all-local-variables)
       (let ((inhibit-read-only t))
 	(erase-buffer))
+
+      (message "*******")
+      (iron-main-message "EPF" "MSP" 3 "I"
+			 "subpanel modeline is \"%s\"."
+			 (null mode-line-format))
+      (message "*******")
 
       (setq-local iron-main-epf--is-top-panel
 		  nil
@@ -2285,36 +2333,107 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
     ))
 
 
+;; (cl-defun iron-main-epf--exit-top-panel (&optional
+;; 					 (panel-to-exit
+;; 					  (current-buffer)))
+;;   (interactive)
+
+;;   (with-current-buffer panel-to-exit
+
+;;     (message "*")
+;;     (message "IMEPFETP0I: exiting top panel %s." panel-to-exit)
+    
+;;     (when iron-main-epf--subpanel-window
+;;       (let ((sp-buffer (window-buffer iron-main-epf--subpanel-window)))
+;; 	(message "IMEPFETP1I: exiting sub panel window %s (buffer %s)."
+;; 		 iron-main-epf--subpanel-window
+;; 		 sp-buffer
+;; 		 )
+;; 	(iron-main-epf--exit-subpanel sp-buffer)
+;; 	(iron-main-epf--cleanup-subpanel-exit panel-to-exit)
+;; 	))
+
+;;     (iron-main-epf--exit-panel panel-to-exit)
+;;     ))
+
+
+;; New version
+
 (cl-defun iron-main-epf--exit-top-panel (&optional
 					 (panel-to-exit
 					  (current-buffer)))
+  ;; This just become a wrapper.
+  
   (interactive)
 
+  (message "*")
+  (message "IMEPFETP0I: exiting top panel %s." panel-to-exit)
+  
   (with-current-buffer panel-to-exit
 
-    (message "*")
-    (message "IMEPFETP0I: exiting top panel %s." panel-to-exit)
-    
-    (when iron-main-epf--subpanel-window
-      (let ((sp-buffer (window-buffer iron-main-epf--subpanel-window)))
-	(message "IMEPFETP1I: exiting sub panel window %s (buffer %s)."
-		 iron-main-epf--subpanel-window
-		 sp-buffer
-		 )
-	(iron-main-epf--exit-subpanel sp-buffer)
-	(iron-main-epf--cleanup-subpanel-exit panel-to-exit)
-	))
+    (cl-assert iron-main-epf--is-top-panel nil
+	       (iron-main--format-message
+		"EPF"
+		"ETP"
+		0
+		"E"
+		"panel %s is not a top panel."
+		panel-to-exit))
 
-    (iron-main-epf--exit-panel panel-to-exit)
+    (iron-main-epf--exit-subpanel panel-to-exit)
     ))
+
+
+(cl-defun iron-main-epf--exit-subpanel (&optional
+					(panel-to-exit
+					 (current-buffer)))
+  (interactive)
+
+  (message "*")
+  (iron-main-message "EPF" "ESP" 0 "I"
+		     "exiting subpanel %s." panel-to-exit)
+  
+  (with-current-buffer panel-to-exit
+
+    (iron-main-epf--dump-panel (current-buffer))
+    
+    (iron-main-epf--signal-exit-down panel-to-exit)
+
+    (iron-main-message "EPF" "ESP" 1 "I"
+		       "subpanels exited.")
+    
+    (if iron-main-epf--is-top-panel
+	(iron-main-epf--exit-panel panel-to-exit)
+      (let ((panel-window (get-buffer-window panel-to-exit)))
+	(iron-main-message "EPF" "ESP" 2 "I"
+			   "ask parent to cleanup and quitting window.")
+	
+	(iron-main-epf--cleanup-subpanel-exit
+	 iron-main-epf--parent-panel)
+	
+	(iron-main-message "EPF" "ESP" 2 "I"
+			   "quitting window %s." panel-window)
+	(quit-window t panel-window)
+	;; (delete-window panel-window)
+	)
+      )))
 
 
 (cl-defun iron-main-epf--cleanup-subpanel-exit (panel)
   "Internal function to be called after a subpanel exited."
 
   (message "*")
-  (message "IMEPFCSE1I: cleanup sub panel exit %s." panel)
+  (iron-main-message "EPF" "CSE" 0 "I"
+		     "cleanup sub panel exit %s." panel)
+  
   (with-current-buffer panel
+
+    (iron-main-epf--dump-panel panel)
+
+    (iron-main-message "EPF" "CSE" 1 "I"
+		       "saved modeline: %s."
+		       iron-main-epf--panel-saved-modeline)
+    
     (when iron-main-epf--panel-saved-modeline
       (message "IMEPFCSE2I: resetting modeline %s."
 	       iron-main-epf--panel-saved-modeline)
@@ -2322,53 +2441,112 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
 		  iron-main-epf--panel-saved-modeline))
 
     (message "IMEPFCSE3I: setting subpanel window to NIL.")
-    (setq-local iron-main-epf--subpanel-window nil))
+    (setq-local iron-main-epf--subpanel-window nil)
+
+    (iron-main-message "EPF" "CSE" 4 "I"
+		       "cleanud up %s." panel)
+
+    (iron-main-epf--dump-panel panel)
+    nil
+    )
   )
 
 
-(cl-defun iron-main-epf--exit-subpanel (&optional
-					(subpanel-to-exit
-					 (current-buffer))
-					)
+;; (cl-defun iron-main-epf--exit-subpanel (&optional
+;; 					(subpanel-to-exit
+;; 					 (current-buffer))
+;; 					)
+;;   (interactive)
+
+;;   (with-current-buffer subpanel-to-exit
+;;     (let ((parent-panel iron-main-epf--parent-panel)
+;; 	  (sp-buffer (window-buffer iron-main-epf--subpanel-window))
+;; 	  )
+
+;;       (cl-assert parent-panel nil
+;; 		 "IMEPFESP01E: exiting subpanel %s with no parent."
+;; 		 subpanel-to-exit)
+
+;;       (message "*")
+;;       (message "IMEPFESP0I: exiting sub panel %s." subpanel-to-exit)
+;;       (when iron-main-epf--subpanel-window
+;; 	(message "IMEPFESP1I: exiting sub panel window %s."
+;; 		 iron-main-epf--subpanel-window)
+;; 	(iron-main-epf--exit-subpanel sp-buffer)
+;; 	(iron-main-epf--cleanup-subpanel-exit subpanel-to-exit)
+;; 	)
+
+;;       ;; (with-current-buffer parent-panel
+;;       ;; 	(setq-local iron-main-epf--subpanel-window nil)
+
+;;       ;; 	(when iron-main-epf--panel-saved-modeline
+;;       ;; 	  (setq-local mode-line-format
+;;       ;; 		      iron-main-epf--panel-saved-modeline))
+;;       ;; 	)
+
+;;       (message "IMEPFESP02I: quitting window %s."
+;; 	       (selected-window))
+;;       (message "IMEPFESP02I: for buffer %s."
+;; 	       subpanel-to-exit)
+;;       (message "IMEPFESP02I: with window %s."
+;; 	       (get-buffer-window subpanel-to-exit))
+;;       (quit-window t (get-buffer-window subpanel-to-exit))
+
+;;       ;; Finally we tell the parent to clean up this subpanel.
+;;       (iron-main-epf--cleanup-subpanel-exit parent-panel)
+;;       ))
+;;   )
+
+
+(cl-defun iron-main-epf--signal-exit-down (&optional
+					   (subroot-panel
+					    (current-buffer))
+					   )
+  ;; SUBROOT-PANEL is the panel with a potential subpanel to exit.
+  ;; Note that the panels are actualy organized in a list; hence
+  ;; '-ROOT' is a bit of a misnomer.
+  
   (interactive)
 
-  (with-current-buffer subpanel-to-exit
-    (let ((parent-panel iron-main-epf--parent-panel)
-	  (sp-buffer (window-buffer iron-main-epf--subpanel-window))
-	  )
+  (message "**")
+  (iron-main-message "EPF" "ESPS" 0 "I"
+		     "exiting sub panel of %s." subroot-panel)
 
-      (cl-assert parent-panel nil
-		 "IMEPFESP01E: exiting subpanel %s with no parent."
-		 subpanel-to-exit)
+  (message "***")
 
-      (message "*")
-      (message "IMEPFESP0I: exiting sub panel %s." subpanel-to-exit)
-      (when iron-main-epf--subpanel-window
-	(message "IMEPFESP1I: exiting sub panel window %s."
+  
+  (with-current-buffer subroot-panel
+
+    (iron-main-epf--dump-panel (current-buffer))
+    
+    (unless iron-main-epf--subpanel-window
+      (iron-main-message "EPF" "ESPS" 1 "I" "leaf panel."))
+    
+    (when iron-main-epf--subpanel-window
+      ;; Whe have a subpanel to "exit"...
+
+      (let ((sp-buffer (window-buffer iron-main-epf--subpanel-window)))
+
+	(message "IMEPFESPS1I: exiting sub panel window %s."
 		 iron-main-epf--subpanel-window)
+	(message "IMEPFESPS1I: on buffer %s."
+		 sp-buffer)
+
 	(iron-main-epf--exit-subpanel sp-buffer)
-	(iron-main-epf--cleanup-subpanel-exit subpanel-to-exit)
-	)
 
-      ;; (with-current-buffer parent-panel
-      ;; 	(setq-local iron-main-epf--subpanel-window nil)
+	(message "IMEPFESPS02I: currently selected window %s."
+		 (selected-window))
+	(message "IMEPFESPS02I: for buffer %s."
+		 (window-buffer (selected-window))) ; Pleonastic.
 
-      ;; 	(when iron-main-epf--panel-saved-modeline
-      ;; 	  (setq-local mode-line-format
-      ;; 		      iron-main-epf--panel-saved-modeline))
-      ;; 	)
-
-      (message "IMEPFESP02I: quitting window %s."
-	       (selected-window))
-      (message "IMEPFESP02I: for buffer %s."
-	       subpanel-to-exit)
-      (message "IMEPFESP02I: with window %s."
-	       (get-buffer-window subpanel-to-exit))
-      (quit-window t (get-buffer-window subpanel-to-exit))
-
-      ;; Finally we tell the parent to clean up this subpanel.
-      (iron-main-epf--cleanup-subpanel-exit parent-panel)
-      ))
+	(message "IMEPFESPS02I: *** quitting window %s."
+		 iron-main-epf--subpanel-window)
+	(message "IMEPFESPS02I: *** with window %s."
+		 (window-buffer iron-main-epf--subpanel-window))
+	
+	;; (quit-window t iron-main-epf--subpanel-window)
+	))
+    (iron-main-epf--cleanup-subpanel-exit subroot-panel))
   )
 
 
@@ -2423,7 +2601,7 @@ This function is just a placeholder for testing stuff.
       (lambda (&rest args)
 	(ignore args)
 	(iron-main-epf--make-subpanel
-	 "IRON MAIN SUBPANEL"
+	 "*IRON MAIN Subpanel*"
 	 (lambda (&rest args)
 	   (ignore args)
 	   (widget-insert "\nSubpanel\n")
