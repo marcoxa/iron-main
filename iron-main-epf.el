@@ -2116,6 +2116,33 @@ Creating a subpanel may remove the buffer modeline; removing the
 subpanel must restore it.")
 
 
+(cl-defun iron-main-epf--panel-subpanels (subpanel-root)
+  (cl-assert (bufferp subpanel-root) t)
+
+  (with-current-buffer subpanel-root
+    (if (null iron-main-epf--subpanel-window)
+	(list subpanel-root)
+      (cons subpanel-root
+	    (iron-main-epf--panel-subpanels
+	     (get-buffer-window subpanel-root))))))
+
+
+(cl-defun iron-main-epf--panel-superpanels (subpanel-leaf)
+  (cl-assert (bufferp subpanel-leaf) t)
+
+  (cl-labels ((get-super (subpanel-leaf superpanels)
+
+		(with-current-buffer subpanel-leaf
+		  (if iron-main-epf--is-top-panel
+		      (reverse (cons subpanel-leaf superpanels))
+		    (get-super iron-main-epf--parent-panel
+			       (cons subpanel-leaf superpanels)))
+		  ))
+	      )
+    (get-super subpanel-leaf ())))
+
+
+
 (cl-defun iron-main-epf--dump-panel (panel)
   (with-current-buffer panel
     (message "*")
@@ -2150,16 +2177,27 @@ subpanel must restore it.")
 					      nil))
 				     
 				     &allow-other-keys)
+  "Makes a \\='top level\\=' panel.
+
+The function takes the SESSION, a BUFFER-OR-NAME and creates its
+contents (widgets) by invoking the function SETUP on the keys passed
+to the call (sans the key SETUP).  SETUP, if not
+defined via `cl-defun', can be a lambda essentially taking a &rest
+p-list; the value returned by SETUP-FUNCTION is ignored.
+
+`iron-main-epf--make-panel' switches to BUFFER-OR-NAME, sets up
+the panel-to-panel navigation, initializes the subpanel local
+variables and returns the buffer BUFFER-OR-NAME."
   ;; (ignore args)
   
   (cl-assert (iron-main-session-p session) t
 	     "IMEPF0E: SESSION %S is not a `iron-main-session'"
 	     session)
 
-   (message "*")
-   (iron-main-message "EPF" "MP" 0 "I"
-		      "making panel %s."
-		      buffer-or-name)
+  (message "*")
+  (iron-main-message "EPF" "MP" 0 "I"
+		     "making panel %s."
+		     buffer-or-name)
 
   (switch-to-buffer buffer-or-name)
     
@@ -2197,12 +2235,15 @@ subpanel must restore it.")
 
   (cl-remf keys :setup)
 
-  (prog1 (apply setup keys)
-    
-    (iron-main-epf--dump-panel (current-buffer))
-    (message "IMEPF01I: panel %s set up."
-	     (buffer-name))	; Assume SETUP does not switch buffer.
-    ))
+  (apply setup keys)
+
+  ;; Assume SETUP does not switch buffer.
+  
+  (iron-main-epf--dump-panel (current-buffer))
+  (message "IMEPF01I: panel %s set up." (buffer-name))
+
+  (current-buffer)
+  )
 
 
 (cl-defun iron-main-epf--make-subpanel (buffer-or-name
@@ -2226,9 +2267,14 @@ buffer displayed in the subpanel.  The buffer in the subpanel is
 erased.  The buffer, after being erased is set up by invoking
 SETUP-FUNCTION within a call to WITH-CURRENT-BUFFER; the
 SETUP-FUNCTION is called with the keyword arguments passed to
-`iron-main-epf--make-subdisplay'.  Hence, SETUP-FUNCTION, if not
+`iron-main-epf--make-subpanel'.  Hence, SETUP-FUNCTION, if not
 defined via `cl-defun', can be a lambda essentially taking a &rest
-p-list.
+p-list; the value returned by SETUP-FUNCTION is ignored.
+
+`iron-main-epf--make-subpanel' creates and displays
+BUFFER-OR-NAME, sets up the panel-to-panel navigation,
+initializes the subpanel local variables and returns the buffer
+BUFFER-OR-NAME.
 
 The WINDOW-HEIGHT argument (default 0.75) is the percentage of the
 selected window (the \\='main panel\\=') that the subpanel will
@@ -2244,6 +2290,7 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
   (ignore top-panel parent-panel)
 
   (message "*")
+  (message "*")
   (iron-main-message "EPF" "MSP" 0 "I"
 		     "making subpanel %s."
 		     buffer-or-name)
@@ -2256,12 +2303,24 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
 	  buffer-or-name))
 	)
 
+
+    (iron-main-message "EPF" "MSP" 0 "I"
+		       "selected window %s." (selected-window)
+		       )
+    (iron-main-message "EPF" "MSP" 0 "I"
+		       "current buffer %s." (current-buffer)
+		       )
+
+    ;; (select-window (split-window-below nil))
+
     (display-buffer subpanel-display-buffer
 		    `(
-		      ;; display-buffer-below-selected
-		      display-buffer-in-side-window
-		      (side . bottom)
+		      display-buffer-below-selected
+		      ;; display-buffer-in-side-window
+		      ;; (side . bottom)
 		      (window-height . ,window-height)
+		      (window-min-height . 5)
+		      ;; (inhibit-same-window . t)
 		      ))
 
     (iron-main-message "EPF" "MSP" 1 "I"
@@ -2327,8 +2386,11 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
       (prog1 (apply setup-function keys)
 
 	(iron-main-epf--dump-panel (current-buffer))
+
+	(iron-main-message "EPF" "MSP" 4 "I"
+			   "tree %s." (window-tree))
 	
-	(message "IMPFS02I: subpanel display set up.")
+	(iron-main-message "EPF" "MSP" 5 "I" "subpanel display set up.")
 	))
     ))
 
@@ -2593,19 +2655,43 @@ This function is just a placeholder for testing stuff.
      (ignore args)
      (use-local-map iron-main-epf--test-toppanel-keymap)
      (setq-local header-line-format "IMEPFTS01I")
-     (widget-insert "\n\nTop panel\n")
+     (widget-insert "\nTop panel\n")
+     
      (widget-create
       'push-button
       :value "Make Subpanel"
       :action
       (lambda (&rest args)
 	(ignore args)
+	(iron-main-message "EPF" "WCB" 1 "I" "creating subpanel %s."
+			   (selected-window))
 	(iron-main-epf--make-subpanel
 	 "*IRON MAIN Subpanel*"
 	 (lambda (&rest args)
 	   (ignore args)
 	   (widget-insert "\nSubpanel\n")
 	   (use-local-map iron-main-epf--test-subpanel-keymap)
+	   
+	   (widget-create
+	    'push-button
+	    :value "Make Subsubpanel"
+	    :action
+	    (lambda (&rest args)
+	      (ignore args)
+	      (iron-main-message "EPF" "WCB" 1 "I" "creating subsubpanel %s."
+				 (selected-window))
+	      (iron-main-epf--make-subpanel
+	       "*IRON MAIN Subsubpanel*"
+	       (lambda (&rest args)
+		 (ignore args)
+		 (widget-insert "\nSubsubpanel\n")
+		 (use-local-map iron-main-epf--test-subpanel-keymap)
+		 (widget-setup)
+		 )
+	       :window-height 7
+	       :header-line "SUB SUB Panel"
+	       ))
+	    )
 	   (widget-setup)
 	   )))
 	 )
