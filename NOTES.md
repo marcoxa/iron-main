@@ -62,3 +62,10 @@ above.  It looks like this could be fully generalized and factored
 out.
 
 
+## 2023-10-05
+
+Scheme works.  It is very sensitive to the `window-height` parameter,
+which MUST be specified when creating subpanels.
+
+
+
