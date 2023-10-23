@@ -3177,13 +3177,13 @@ variables and returns the buffer BUFFER-OR-NAME."
 	      (iron-main-hs-pid session))
 
   ;; Panel setup.
-
-  (setq-local iron-main-epf--is-top-panel t
-	      iron-main-epf--parent-panel nil
-	      iron-main-epf--subpanel-window nil
-	      iron-main-epf--top-panel-window (selected-window)
-	      iron-main-epf--panel-saved-modeline mode-line-format
-	      )
+  ;; `setq-local' takes only two arguments in older Emacsen.
+  
+  (setq-local iron-main-epf--is-top-panel t)
+  (setq-local iron-main-epf--parent-panel nil)
+  (setq-local iron-main-epf--subpanel-window nil)
+  (setq-local iron-main-epf--top-panel-window (selected-window))
+  (setq-local iron-main-epf--panel-saved-modeline mode-line-format)
 
   (iron-main-message "EPF" "MP" 1 "I"
 		     "saved modeline: %s."
@@ -3313,18 +3313,14 @@ nil (the default) hides/moves the modeline of the \\='main panel\\='.
 			 (null mode-line-format))
       (message "*******")
 
-      (setq-local iron-main-epf--is-top-panel
-		  nil
+      ;; `setq-local' takes only two arguments in older Emcasen.
+      (setq-local iron-main-epf--is-top-panel nil)
 
-		  iron-main-epf--parent-panel
-		  panel-display-buffer
+      (setq-local iron-main-epf--parent-panel panel-display-buffer)
 
-		  iron-main-epf--top-panel-window
-		  panel-display-window
+      (setq-local iron-main-epf--top-panel-window panel-display-window)
 
-		  iron-main-epf--saved-modeline
-		  mode-line-format
-		  )
+      (setq-local iron-main-epf--saved-modeline mode-line-format)
 
       (when header-line
 	(setq-local header-line-format header-line))
