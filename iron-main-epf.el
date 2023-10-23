@@ -9,7 +9,7 @@
 ;;
 ;; Created: July 20th, 2023.
 ;;
-;; Version: 2023-10-04.1
+;; Version: 2023-10-23.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -206,7 +206,6 @@ See Also:
 
 (defvar-local iron-main-epf--cmds-links ()
   "List of \"link\" widgets for the commands available in the panel.")
-
 
 
 ;;; Widget related functions.
@@ -439,8 +438,8 @@ This function is necessary because it is inexplicably absent from the
 		 )))
 
 
-;; IRON MAIN EPF minor mode.
-;; -------------------------
+;; IRON MAIN EPF modes.
+;; --------------------
 
 ;;; iron-main-epf-mode
 ;; The main mode (major) for the panels.
@@ -464,13 +463,17 @@ Note that `overwrite-mode' is turned on in the panels."
   (use-local-map iron-main-epf-mode-keymap)
 
   ;; Minimal header and mode lines; panels may change these.
-  
-  (setq-local header-line-format (iron-main-epf--make-header-line))
+
+  ;; Newer version that abuses the tab line for panel titles.
+  ;; (setq-local header-line-format (iron-main-epf--make-header-line))
+  (setq-local tab-line-format (iron-main-epf--make-header-line))
   (setq-local mode-line-format (iron-main-epf--make-mode-line))
   )
 
 
-;; Panels.
+;; IRON MAIN Emacs Panels.
+;; -----------------------
+;;
 ;; The actual panels available.
 ;; The "fields" (or "widgets") of each panel have (function) names
 ;; that end in "-field" or "-widget".
@@ -1495,7 +1498,8 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
     ;; (widget-forward 1)
     (iron-main-epf--goto-first-widget)
     )
-  (message "IMFPF00I: My Emacs thinks it's an ISPF!")
+  (iron-main-message "EPF" "IMF" 0 "I"
+		     "my Emacs thinks it's an ISPF!")
   )
 
 
@@ -1610,20 +1614,22 @@ Hercules."
 				      result))
 
       ;; Now we format depending on `devtype'
-      (cond ((string-equal devtype "DASD")
-	     (message "IMHSP2I: formatting DASD list.")
-	     (setq result
-		   (iron-main-epf--format-dasd-list result))
-	     )
-	    (t
-	     ;; Noting fttb
-	     (message "IMHSP2I: formatting %s list." devtype)
-	     (setq result
-		   (format "Available %ss.\n\n%s"
-			   devtype
-			   result))
-	     )
-	    )
+      ;; (cond ((string-equal devtype "DASD")
+      ;; 	     (iron-main-message  "EPF" "HCD" 2 "I"
+      ;;                            "formatting DASD list\n%s."
+      ;;                            result)
+      ;; 	     (setq result
+      ;; 		   (iron-main-epf--format-dasd-list result))
+      ;; 	     )
+      ;; 	    (t
+      ;; 	     ;; Noting fttb
+      ;; 	     (message "IMHSP2I: formatting %s list." devtype)
+      ;; 	     (setq result
+      ;; 		   (format "Available %ss.\n\n%s"
+      ;; 			   devtype
+      ;; 			   result))
+      ;; 	     )
+      ;; 	    )
       result
       )))
 
@@ -1641,24 +1647,170 @@ Hercules."
   ;;
   ;; DEVID MODEL HOSTFOLDER CYL SFS IO(channels?) STATUS
 
-  (let ((result "")
-	;; I should rewrite the next regexp breaking it up and using
-	;; RX.
-	(col-regexp
-	 "\\([:0-9A-Z]+\\) \\([0-9]+\\) \\(.+\\) \\(\\[[^]]+?\\]\\) \\(\\[[^]]+?\\]\\) \\(IO\\[[^]]+?\\]\\) \\(.+\\)")
-	(result-regexp
-	 "\\1\t\\2\t\\3\t\\4\t\\5\t\\6\t\\7")
-	)
-    (setf result
-	  (replace-regexp-in-string col-regexp
-				    result-regexp
-				    dasdlist))
+  (with-output-to-string
+    (let (
+	  ;; I should rewrite the next regexp breaking it up and using
+	  ;; RX.
+	  (col-regexp
+	   "\\([:0-9A-Z]+\\) \\([0-9]+\\) \\(.+\\) \\(\\[[^]]+?\\]\\) \\(\\[[^]]+?\\]\\) \\(IO\\[[^]]+?\\]\\) \\(.+\\)")
+
+	  (col-rx
+	   (rx (group (+ (any ?: "0-9" "A-Z")))
+	       " "
+	       (group (+ (any "0-9")))
+	       " "
+	       (group (+ nonl))
+	       " "
+	       "["
+	       (group (+ (any "0-9")))
+	       " cyls"
+	       "]"
+	       " "
+	       "["
+	       (group (+ (any "0-9")))
+	       " sfs"
+	       "]"
+	       " "
+	       "IO["
+	       (group (+ (any "0-9")))
+	       "]"		    
+	       " "
+	       (group (+ nonl))))
+
+	  (dasd-lines (split-string dasdlist "\n"))
+	  )
+
+      (ignore col-regexp)		; Left in FTTB.
+
+      (dolist (dasd-line dasd-lines)
+	(iron-main-message "EPF" "FDL" 0 "I"
+			   "DASD line: |%s|"
+			   dasd-line)
+	(unless (string= "" dasd-line)
+	  (string-match col-rx dasd-line)
+	  (let ((devid (match-string 1 dasd-line))
+		(model (match-string 2 dasd-line))
+		(host-folder (match-string 3 dasd-line))
+		(cyl (match-string 4 dasd-line))
+		(sfs (match-string 5 dasd-line))
+		(io-channels (match-string 6 dasd-line))
+		(status (match-string 7 dasd-line))
+		)
+	    (iron-main-message "EPF" "FDL" 0 "I"
+			       "DASD: |%s|\t|%s|\t|%s|\t|[%3s sfs]|\t|%s|\t|%6s|\t|%s"
+			       devid
+			       model
+			       cyl
+			       sfs
+			       io-channels
+			       status
+			       host-folder)
+
+	    ;; Maybe reuse the format string for the header line.
+	    
+	    (princ (format "%6s\t%5s\t%4s\t%3s\t%11s\t%6s\t%s\n"
+			   devid
+			   model
+			   cyl
+			   sfs
+			   io-channels
+			   status
+			   host-folder))
+	    )))
+      )))
+
+
+(cl-defun iron-main-epf--format-dsp-list (dsplist)
+  "Format the string DSPLIST in columns."
+  ;; Very simple minded FTTB.
+  ;;
+  ;; `dasdlist' is a string with lines like:
+  ;;
+  ;; 0:03C0 3270 GROUP=TCAM IO[6]
+  ;;
+  ;; where the 4 columns are:
+  ;;
+  ;; DEVID MODEL GROUP IO(channels?)
+
+
+  (with-output-to-string
+    (let ((col-rx
+	   (rx (group (+ (any ?: "0-9" "A-Z")))
+	       " "
+	       (group (+ (any "0-9")))
+	       " "
+	       (group (+ nonl))
+	       " "
+	       "IO["
+	       (group (+ (any "0-9")))
+	       "]"		    
+	       ))
+
+	  (dsp-lines (split-string dsplist "\n"))
+	  )
+
+      (dolist (dsp-line dsp-lines)
+	(iron-main-message "EPF" "FDL" 0 "I"
+			   "DSP line: |%s|"
+			   dsp-line)
+	(unless (string= "" dsp-line)
+	  (string-match col-rx dsp-line)
+	  (let ((devid (match-string 1 dsp-line))
+		(model (match-string 2 dsp-line))
+		(group (match-string 3 dsp-line))
+		(io-channels (match-string 4 dsp-line))
+		)
+	    (iron-main-message "EPF" "FDL" 0 "I"
+			       "DSP: |%s|\t|%s|\t|%s|\t|%s|"
+			       devid
+			       model
+			       group
+			       io-channels
+			       )
+
+	    ;; Maybe reuse the format string for the header line.
+	    
+	    (princ (format "%6s\t%5s\t%10s\t%11s\n"
+			   devid
+			   model
+			   group
+			   io-channels
+			   ))
+	    )))
+      )))
+
+
+;; (cl-defun iron-main-epf--format-dasd-list (dasdlist)
+;;   "Format the string DASDLIST in columns."
+;;   ;; Very simple minded FTTB.
+;;   ;;
+;;   ;; `dasdlist' is a string with lines like:
+;;   ;;
+;;   ;; 0:0133 2314 dasd/sort03.133 [203 cyls] [0 sfs] IO[23] open
+;;   ;; 0:0134 2314 dasd/sort04.134 [203 cyls] [0 sfs] IO[23] open
+;;   ;;
+;;   ;; where the 7 columns are:
+;;   ;;
+;;   ;; DEVID MODEL HOSTFOLDER CYL SFS IO(channels?) STATUS
+
+;;   (let ((result "")
+;; 	;; I should rewrite the next regexp breaking it up and using
+;; 	;; RX.
+;; 	(col-regexp
+;; 	 "\\([:0-9A-Z]+\\) \\([0-9]+\\) \\(.+\\) \\(\\[[^]]+?\\]\\) \\(\\[[^]]+?\\]\\) \\(IO\\[[^]]+?\\]\\) \\(.+\\)")
+;; 	(result-regexp
+;; 	 "\\1\t\\2\t\\3\t\\4\t\\5\t\\6\t\\7")
+;; 	)
+;;     (setf result
+;; 	  (replace-regexp-in-string col-regexp
+;; 				    result-regexp
+;; 				    dasdlist))
     
-    ;; Not quite right yet, but gettng there...
-    (format "%s\n%s"
-	    "DEVID\tMODEL\tHOST FOLDER\tCYL\tSFS\tIO(channels)\tSTATUS"
-	    result)
-    ))
+;;     ;; Not quite right yet, but gettng there...
+;;     (format "%s\n%s"
+;; 	    "DEVID\tMODEL\tHOST FOLDER\tCYL\tSFS\tIO(channels)\tSTATUS"
+;; 	    result)
+;;     ))
 
 
 
@@ -1683,14 +1835,22 @@ Hercules."
      :header "List of CTCA devices")
     ("DASD" iron-main-epf--hercules-devs-dasd
      :header "List of DASD devices")
-    ("DSP")
-    ("FCP")
-    ("LINE")
-    ("OSA")
-    ("PCH")
-    ("PRT")
-    ("RDR")
-    ("TAPE")
+    ("DSP" iron-main-epf--hercules-devs-dsp
+     :header "List of DSP devices")
+    ("FCP" iron-main-epf--hercules-devs-fcp
+     :header "List of FCP devices")
+    ("LINE" iron-main-epf--hercules-devs-line
+     :header "List of LINE devices")
+    ("OSA" iron-main-epf--hercules-devs-osa
+     :header "List of OSA devices")
+    ("PCH" iron-main-epf--hercules-devs-pch
+     :header "List of Punch (PCH) devices")
+    ("PRT" iron-main-epf--hercules-devs-prt
+     :header "Printer List (PRT devices)")
+    ("RDR" iron-main-epf--hercules-devs-rdr
+     :header "Reader List (RDR devices)")
+    ("TAPE" iron-main-epf--hercules-devs-tape
+     :header "Tape List (TAPE devices)")
     )
   "A \\='commands alist\\=' for the IRON MAIN devices panel."
   )
@@ -1955,6 +2115,114 @@ downstream if needed."
    (iron-main-hercules-devlist devtype)))
 
 
+;; The following functions may eventually benefit from using
+;; tabulated-list-mode.
+
+(cl-defun iron-main-epf--dev-listing-panel-setup
+    (&rest
+     args
+     &key
+     (tag "DEVTYPE")
+     (header-line " DEVICE")
+     (devlist-format-func #'identity)
+     &allow-other-keys
+     )
+  (ignore args)
+
+	 
+  (setq-local iron-main-epf--tag (format "Hercules %s" tag))
+
+  (setq-local tab-line-format
+	      (iron-main-epf--make-header-line
+	       (format " Hercules %s" tag)))
+
+  (setq-local
+   header-line-format
+   header-line
+   ;; " DASD"
+   ;; " DEVID \tModel\tCYL\tSFS\tIO(channels)\tStatus\tHost Folder"
+   )
+
+  (let* ((devlist (iron-main-epf--hercules-devlist tag))
+	 (devs (funcall devlist-format-func devlist))
+	 )
+    (iron-main-message "EPF" "HDD" 0 "I"
+		       "%ss\n%s"
+		       tag
+		       devlist)
+    (cond ((not (string= "" devs))
+	   (goto-char (point-min))
+	   (save-excursion
+	     (let ((inhibit-read-only t)
+		   (inhibit-modification-hooks t)
+		   )
+	       (delete-region (point-min) (point-max))))
+	   (widget-insert devs)
+	   )
+	  (t
+	   (widget-insert (format "\n%ss will appear here\n" tag)))
+	  ))
+  )
+
+
+(cl-defun iron-main-epf--dev-listing-panel-setup-full
+    (session
+     &rest
+     args
+     &key
+     (tag "DEVTYPE")
+     (header-line " DEVICE")
+     (devlist-format-func #'identity)
+     &allow-other-keys
+     )
+  (ignore args)
+
+  (cl-flet
+      ((listing-panel-setup (&rest args)
+
+	 (ignore args)
+
+	 (setq-local iron-main-epf--tag (format "Hercules %s" tag))
+
+	 (setq-local tab-line-format
+		     (iron-main-epf--make-header-line
+		      (format " Hercules %s" tag)))
+
+	 (setq-local
+	  header-line-format
+	  header-line
+	  ;; " DASD"
+	  ;; " DEVID \tModel\tCYL\tSFS\tIO(channels)\tStatus\tHost Folder"
+	  )
+
+	 (let* ((devlist (iron-main-epf--hercules-devlist tag))
+		(devs (funcall devlist-format-func devlist))
+		)
+	   (iron-main-message "EPF" "HDD" 0 "I"
+			      "%ss\n%s"
+			      tag
+			      devlist)
+	   (cond ((not (string= "" devs))
+		  (goto-char (point-min))
+		  (save-excursion
+		    (let ((inhibit-read-only t)
+			  (inhibit-modification-hooks t)
+			  )
+		      (delete-region (point-min) (point-max))))
+		  (widget-insert devs)
+		  )
+		 (t
+		  (widget-insert (format "\n%ss will appear here\n" tag)))
+		 ))
+	 )
+       )
+    (iron-main-epf--make-panel session
+			       (format "*IRON MAIN Hercules %s*" tag)
+			       :setup
+			       #'listing-panel-setup)
+    ))
+
+
 (cl-defun iron-main-epf--hercules-devs-ctca (session &rest args)
   "Gives SESSION it sets up the panel displaying the available CTCAs."
   (ignore args)
@@ -1976,9 +2244,7 @@ downstream if needed."
 		    (let ((inhibit-read-only t)
 			  (inhibit-modification-hooks t)
 			  )
-		      (delete-region
-		       iron-main-epf--hs-devinfo-ins-pt
-		       (point-max))))
+		      (delete-region (point-min) (point-max))))
 		  (save-excursion
 		    (widget-insert ctca-devs)
 		    ))
@@ -2002,29 +2268,32 @@ downstream if needed."
 	 (ignore args)
 
 	 
-	 (setq-local iron-main-epf--tag "Hercules CTCA")
+	 (setq-local iron-main-epf--tag "Hercules DASD")
 
 	 (setq-local tab-line-format
 		     (iron-main-epf--make-header-line " Hercules DASD"))
 
-	 (setq-local header-line-format
-		     ;; " DASD"
-		     " DEVID\tMODEL\tHOST FOLDER\tCYL\tSFS\tIO(channels)\tSTATUS"
-		     )
+	 (setq-local
+	  header-line-format
+	  ;; " DASD"
+	  " DEVID \tModel\tCYL\tSFS\tIO(channels)\tStatus\tHost Folder"
+	  )
 
-	 (let ((dasd-devs (iron-main-epf--hercules-devlist "DASD")))
+	 (let* ((dasd-devlist (iron-main-epf--hercules-devlist "DASD"))
+		(dasd-devs (iron-main-epf--format-dasd-list dasd-devlist))
+		)
+	   (iron-main-message "EPF" "HDD" 0 "I"
+			      "DASDs\n%s"
+			      dasd-devlist)
 	   (cond ((not (string= "" dasd-devs))
 		  (goto-char (point-min))
 		  (save-excursion
 		    (let ((inhibit-read-only t)
 			  (inhibit-modification-hooks t)
 			  )
-		      (delete-region
-		       iron-main-epf--hs-devinfo-ins-pt
-		       (point-max))))
-		  (save-excursion
-		    (widget-insert dasd-devs)
-		    ))
+		      (delete-region (point-min) (point-max))))
+		  (widget-insert dasd-devs)
+		  )
 		 (t
 		  (widget-insert "\nDASDs will appear here\n"))
 		 ))
@@ -2035,6 +2304,182 @@ downstream if needed."
 			       :setup
 			       #'dasd-panel-setup)
     ))
+
+
+(cl-defun iron-main-epf--hercules-devs-dsp (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available DSPs."
+  (ignore args)
+  (cl-labels
+      ((dsp-panel-setup (&rest args)
+	 (ignore args)
+
+	 
+	 (setq-local iron-main-epf--tag "Hercules DSP")
+
+	 (setq-local tab-line-format
+		     (iron-main-epf--make-header-line " Hercules DSP"))
+
+	 (setq-local
+	  header-line-format
+	  ;; " DASD"
+	  " DEVID \tModel\tGroup\tIO(channels)"
+	  )
+
+	 (let* ((dsp-devlist (iron-main-epf--hercules-devlist "DSP"))
+		(dsp-devs (iron-main-epf--format-dsp-list dsp-devlist))
+		)
+	   (iron-main-message "EPF" "HDD" 0 "I"
+			      "DSPs\n%s"
+			      dsp-devlist)
+	   (cond ((not (string= "" dsp-devs))
+		  (goto-char (point-min))
+		  (save-excursion
+		    (let ((inhibit-read-only t)
+			  (inhibit-modification-hooks t)
+			  )
+		      (delete-region (point-min) (point-max))))
+		  (widget-insert dsp-devs)
+		  )
+		 (t
+		  (widget-insert "\nDSPs will appear here\n"))
+		 ))
+	 )
+       )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules DSP*"
+			       :setup
+			       #'dsp-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-fcp (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available FCPs."
+  (ignore args)
+  (cl-flet
+      ((fcp-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "FCP"
+		:header-line " FCP"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules FCP*"
+			       :setup
+			       #'fcp-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-line (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available LINEs."
+  (ignore args)
+  (cl-flet
+      ((line-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "LINE"
+		:header-line " LINE"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules LINE*"
+			       :setup
+			       #'line-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-osa (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available OSAs."
+  (ignore args)
+  (cl-flet
+      ((osa-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "OSA"
+		:header-line " OSA"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules OSA*"
+			       :setup
+			       #'osa-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-pch (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available PCHs."
+  (ignore args)
+  (cl-flet
+      ((pch-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "PCH"
+		:header-line " PCH"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules PCH*"
+			       :setup
+			       #'pch-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-prt (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available PRTs."
+  (ignore args)
+  (cl-flet
+      ((prt-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "PRT"
+		:header-line " PRT"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules PRT*"
+			       :setup
+			       #'prt-panel-setup)
+    ))
+
+
+(cl-defun iron-main-epf--hercules-devs-rdr (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available RDRs."
+  (ignore args)
+  (cl-flet
+      ((rdr-panel-setup (&rest args)
+	 (apply #'iron-main-epf--dev-listing-panel-setup
+		:tag "RDR"
+		:header-line " RDR"
+		args))
+	 )
+    (iron-main-epf--make-panel session
+			       "*IRON MAIN Hercules RDR*"
+			       :setup
+			       #'rdr-panel-setup)
+    ))
+
+
+;; (cl-defun iron-main-epf--hercules-devs-tape (session &rest args)
+;;   "Gives SESSION it sets up the panel displaying the available TAPEs."
+;;   (ignore args)
+;;   (cl-flet
+;;       ((tape-panel-setup (&rest args)
+;; 	 (apply #'iron-main-epf--dev-listing-panel-setup
+;; 		:tag "TAPE"
+;; 		:header-line " TAPE"
+;; 		args))
+;; 	 )
+;;     (iron-main-epf--make-panel session
+;; 			       "*IRON MAIN Hercules TAPE*"
+;; 			       :setup
+;; 			       #'tape-panel-setup)
+;;     ))
+
+
+(cl-defun iron-main-epf--hercules-devs-tape (session &rest args)
+  "Gives SESSION it sets up the panel displaying the available TAPEs."
+  (ignore args)
+
+  (iron-main-epf--dev-listing-panel-setup-full
+   session
+   :tag "TAPE"
+   :header-line " TAPE"
+   ))
 
 
 ;; IRON MAIN Emacs SP panel.
