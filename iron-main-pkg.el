@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 2nd, 2020.
 ;;
-;; Version: 20230511.1
+;; Version: 2023-10-23.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -20,7 +20,7 @@
 
 ;;; Code:
 
-(define-package "IRON MAIN" "2023-09-11"
+(define-package "IRON MAIN" "2023-10-23"
   "The Iron Main package.
 
 The Iron Main package is a collection of modes and code to allow
