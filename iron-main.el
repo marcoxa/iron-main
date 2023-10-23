@@ -9,7 +9,7 @@
 ;;
 ;; Created: December 5th, 2020.
 ;;
-;; Version: 2023-09-28.1
+;; Version: 2023-10-22.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -54,6 +54,17 @@ Internal variable controlling whether the loading of the package
 should cause the (re)compilation fo the folder.")
 
 
+(defvar iron-main-user-config-file
+  (locate-user-emacs-file "iron-main/iron-main-init.el")
+  "The standard IRON MAIN user config file.
+
+This file, normally located in the standard Emacs configuration
+folder, may contain some initialization code for the IRON MAIN
+library.  E.g., default locations of OS instances in the file system,
+or specialized ports where to read and write to communicate with a
+running Hercules or OS instance.")
+
+
 ;; The order of the require and load calls is relevant.
 
 (require 'cl-lib)
@@ -95,7 +106,14 @@ should cause the (re)compilation fo the folder.")
 (when iron-main--do-recompile-dir
   (byte-recompile-directory iron-main-path 0))
 
-(message "IMEL00I: Library IRON MAIN loaded.")
+
+(when (file-exists-p iron-main-user-config-file)
+  (message "IMEL00I: loading IRON MAIN config file '%s'."
+	   iron-main-user-config-file)
+  (load iron-main-user-config-file))
+
+
+(message "IMEL00I: library IRON MAIN loaded.")
 
 (provide 'iron-main)
 
