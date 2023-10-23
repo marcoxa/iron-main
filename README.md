@@ -8,11 +8,11 @@ The *mainframe* is, for the time being, an IBM architecture
 *machine* (or an emulator - see below) running a variant of MVS or
 z/OS.
 
-Some motivation: as of Winter 2023 (since Fall 2020), there appeared to
-be no [*Job Control Language*](https://en.wikipedia.org/wiki/Job_Control_Language) (JCL)
-mode (that is, a `jcl-mode`) floating around the Emacs Internet world.
-Probably there was no need for it.  Yet.  So it seemed to be a good
-idea to write one.
+Some motivation: as of Fall 2023 (since Fall 2020), there appeared to
+be no [*Job Control Language*](https://en.wikipedia.org/wiki/Job_Control_Language)
+(JCL) mode (that is, a `jcl-mode`) floating around the Emacs Internet
+world.  Probably there was no need for it.  Yet.  So it seemed to be a
+good idea to write one.
 
 The result is this minimal collection of tools and modes in Emacs Lisp
 to interact with the mainframe.
@@ -29,20 +29,23 @@ to interact with the mainframe.
 * **jcl-poly-mode** (file `jcl-poly-mode.el`): a major mode to handle
   IBM MVS or Z/OS JCL based on `polymode.el'; *PL/I*, *COBOL*,
   *Fortran* and *ASM* are supported as *inner modes*.
+* **iron-main-frame**: *"My Emacs thinks it is an ISPF"*, that is, a
+  panel-like interface that allows you interact with the mainframe
+  from Emacs.
 
   
-Some tweaking was done to ensure that the column tracking and the
-ruler (cfr., `ruler-mode`) that is used in the various editing modes
-are 1-based, as expected on a "card".
+Some tweaking was done in the language modes to ensure that the column
+tracking and the ruler (cfr., `ruler-mode`) that is used in the
+various editing modes are 1-based, as expected on a "card".
 
 The code has been tested with **MVS 3.8j TK4-** and **MVS 3.8j "Jay
-Moseley"** build, running on a **Hercules** (**SDL/Hyperion 4.2.x**).
+Moseley"** build, running on a **Hercules** (**SDL/Hyperion 4.2.x-4.6.x**).
 Useful links follow.
 
 * **IBM z/OS**: <https://www.ibm.com/it-infrastructure/z/zos>
 * **Hercules**: <http://www.hercules-390.eu/>
 * **SDL/Hyperion**: <https://github.com/SDL-Hercules-390>
-* **TK4-**: <http://wotho.ethz.ch/tk4-/>
+* **TK4-**: <http://wotho.ethz.ch/tk4-/> (this may not work as of Fall 2023)
 * **Jay Moseley's site**: <http://www.jaymoseley.com/hercules/> (and
                           other useful things).
 * **IBM Assemblers**:
@@ -121,11 +124,27 @@ limited, but most statements and attributes are properly highlighted.
 More functionalities may come in the future.
 
 
+## iron-main-frame
+
+This is the entry point to the *"My Emacs thinks it is and ISPF"*
+interface: an Emacs interface to a mainframe.  To start it, invoke the
+function `iron-main-frame` (it is interactive).  A couple of setup
+question will be asked and then the "main panel" will be shown.
+**iron-main-frame** is obviously a Frankenstein Monster; so be kind to
+it.
+
+As of Fall 2023 **iron-main-frame** has been tested only on TK4- and
+Hercules (SDL/Hyperion).
+
+
 # Installing and Using IRON MAIN
 
 To use the package, just install the folder `iron-main` in your Emacs
 setup and ensure that the file `iron-main.el` is loaded.  Files with
-`.jcl` extension will now load in `jcl-mode`.
+`.jcl` extension will now load in `jcl-mode`, files with `.bal` will
+now load in `hlasm-mode` etc, etc.  Also, `iron-main-frame` will be
+defined and available.  All functionalities are (or should be)
+independent of each other.
 
 
 ### A NOTE ON FORKING

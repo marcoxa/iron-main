@@ -68,4 +68,7 @@ Scheme works.  It is very sensitive to the `window-height` parameter,
 which MUST be specified when creating subpanels.
 
 
+## 2023-10-23
 
+Decision made to have only the 'Help Panel' using the new scheme with
+subpanels.  Other "listing" panels will create new, ad-hoc, panels.
