@@ -2,3 +2,5 @@
 *.elc
 *saved*
 tests/*
+archive/*
+
