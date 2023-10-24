@@ -9,7 +9,7 @@
 ;;
 ;; Created: July 20th, 2023.
 ;;
-;; Version: 2023-10-23.1
+;; Version: 2023-10-24.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -1402,25 +1402,6 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
       (setf instance-banner
 	    (iron-main-epf--instance-banner session))
 
-      ;; (if pid
-      ;; 	  (setf (iron-main-hs-pid session)
-      ;; 		pid
-		
-      ;; 		instance-banner
-      ;; 		(format "%s running %s on %s:%s (%s) from %s"
-      ;; 			iron-main-machine
-      ;; 			iron-main-os-flavor
-      ;; 			iron-main-hercules-http-host
-      ;; 			iron-main-hercules-http-port
-      ;; 			pid
-      ;; 			(system-name)))
-      ;; 	(setf instance-banner
-      ;; 	      (format "%s running %s not available from %s"
-      ;; 		      iron-main-machine
-      ;; 		      iron-main-os-flavor
-      ;; 		      (system-name)))
-      ;; 	)
-
       ;; Setting the Hercules OS directories.
       ;; Most setups (e.g., tk4- and Jay Moseleys's) assume a
       ;; directory where the OS resides, with a "dasd" subdirectory.
@@ -1560,7 +1541,49 @@ where the relevant bits and pieces used by the emulator can be found."
 ;; IRON MAIN System panel.
 ;; -----------------------
 
-(defvar-local iron-main-epf--hs-devinfo-ins-pt nil)
+(defvar-local iron-main-epf--hs-devinfo-ins-pt nil) ; This may go away.
+
+
+(defconst iron-main-epf--+hercules-devtypes+
+  '("CTCA"
+    "DASD"
+    "DSP"
+    "FCP"
+    "LINE"
+    "OSA"
+    "PCH"
+    "PRT"
+    "RDR"
+    "TAPE"
+    )
+  "List of available Hercules device types." ; Possibly IBM ones.
+  )
+
+
+(defconst iron-main-epf--hercules-dev-commands
+  `(("CTCA" iron-main-epf--hercules-devs-ctca
+     :header "List of CTCA devices")
+    ("DASD" iron-main-epf--hercules-devs-dasd
+     :header "List of DASD devices")
+    ("DSP" iron-main-epf--hercules-devs-dsp
+     :header "List of DSP devices")
+    ("FCP" iron-main-epf--hercules-devs-fcp
+     :header "List of FCP devices")
+    ("LINE" iron-main-epf--hercules-devs-line
+     :header "List of LINE devices")
+    ("OSA" iron-main-epf--hercules-devs-osa
+     :header "List of OSA devices")
+    ("PCH" iron-main-epf--hercules-devs-pch
+     :header "List of Punch (PCH) devices")
+    ("PRT" iron-main-epf--hercules-devs-prt
+     :header "Printer List (PRT devices)")
+    ("RDR" iron-main-epf--hercules-devs-rdr
+     :header "Reader List (RDR devices)")
+    ("TAPE" iron-main-epf--hercules-devs-tape
+     :header "Tape List (TAPE devices)")
+    )
+  "A \\='commands alist\\=' for the IRON MAIN devices panel."
+  )
 
 
 (cl-defun iron-main-epf--hercules-clean-devlist (devtype
@@ -1612,24 +1635,6 @@ Hercules."
 	    (replace-regexp-in-string (rx bol ?\n)
 				      ""
 				      result))
-
-      ;; Now we format depending on `devtype'
-      ;; (cond ((string-equal devtype "DASD")
-      ;; 	     (iron-main-message  "EPF" "HCD" 2 "I"
-      ;;                            "formatting DASD list\n%s."
-      ;;                            result)
-      ;; 	     (setq result
-      ;; 		   (iron-main-epf--format-dasd-list result))
-      ;; 	     )
-      ;; 	    (t
-      ;; 	     ;; Noting fttb
-      ;; 	     (message "IMHSP2I: formatting %s list." devtype)
-      ;; 	     (setq result
-      ;; 		   (format "Available %ss.\n\n%s"
-      ;; 			   devtype
-      ;; 			   result))
-      ;; 	     )
-      ;; 	    )
       result
       )))
 
@@ -1732,7 +1737,6 @@ Hercules."
   ;;
   ;; DEVID MODEL GROUP IO(channels?)
 
-
   (with-output-to-string
     (let ((col-rx
 	   (rx (group (+ (any ?: "0-9" "A-Z")))
@@ -1813,49 +1817,6 @@ Hercules."
 ;;     ))
 
 
-
-(defconst iron-main-epf--+hercules-devtypes+
-  '("CTCA"
-    "DASD"
-    "DSP"
-    "FCP"
-    "LINE"
-    "OSA"
-    "PCH"
-    "PRT"
-    "RDR"
-    "TAPE"
-    )
-  "List of available Hercules device types." ; Possibly IBM ones.
-  )
-
-
-(defconst iron-main-epf--hercules-dev-commands
-  `(("CTCA" iron-main-epf--hercules-devs-ctca
-     :header "List of CTCA devices")
-    ("DASD" iron-main-epf--hercules-devs-dasd
-     :header "List of DASD devices")
-    ("DSP" iron-main-epf--hercules-devs-dsp
-     :header "List of DSP devices")
-    ("FCP" iron-main-epf--hercules-devs-fcp
-     :header "List of FCP devices")
-    ("LINE" iron-main-epf--hercules-devs-line
-     :header "List of LINE devices")
-    ("OSA" iron-main-epf--hercules-devs-osa
-     :header "List of OSA devices")
-    ("PCH" iron-main-epf--hercules-devs-pch
-     :header "List of Punch (PCH) devices")
-    ("PRT" iron-main-epf--hercules-devs-prt
-     :header "Printer List (PRT devices)")
-    ("RDR" iron-main-epf--hercules-devs-rdr
-     :header "Reader List (RDR devices)")
-    ("TAPE" iron-main-epf--hercules-devs-tape
-     :header "Tape List (TAPE devices)")
-    )
-  "A \\='commands alist\\=' for the IRON MAIN devices panel."
-  )
-
-
 ;; iron-main-epf--hercules-system
 ;; New version shaped like a command panel.
 
@@ -1918,188 +1879,6 @@ downstream if needed."
     ))
 
 
-
-(cl-defun iron-main-epf--hercules-system-2 (session &rest args)
-  "Hercules system inspection panel.
-
-Given a SESSION sets up the \"system\" panel.  ARGS are passed
-downstream if needed."
-
-  (ignore args)
-
-  (cl-labels
-      ((hercules-devlist (devtype)
-	 (let ((dev-list
-		(iron-main-hercules-devlist devtype))
-	       )
-	   (iron-main-epf--hercules-clean-devlist
-	    devtype
-	    dev-list))
-	 )
-       
-       (systems-panel-setup (&rest args)
-
-	 (ignore args)
-
-	 (setq-local iron-main-epf--tag "Hercules system")
-
-	 (setq-local iron-main-epf--cmds
-		     iron-main-epf--hercules-dsfs-commands)
-  
-	 ;; (iron-main-epf--title-field "Hercules system")
-	 (setq-local header-line-format
-		     (iron-main-epf--make-header-line
-		      "Hercules system"))
-
-	 ;; Let's start!
-
-	 ;; Devices retrievable from the Hercules command 'devlist'.
-	 ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
-
-	 (let ((devtypes iron-main-epf--+hercules-devtypes+))
-          
-	   (widget-insert "Available devices\n\n")
-	     
-	   (dolist (dev-type devtypes)
-	     (let ((dev-list
-		    (hercules-devlist dev-type))
-		   )
-
-	       (ignore dev-list)
-
-	       (iron-main-message "EPF" "HS" 1 "I"
-				  "creating button %s."
-				  dev-type)
-	       (widget-create
-		'push-button
-		:value dev-type
-		:action
-		(lambda (w cw &rest ignore)
-		  (ignore cw ignore)
-		  (let* ((dev-type (widget-value w))
-			 (dev-list (hercules-devlist dev-type))
-			 )
-		    (iron-main-message "EPF" "HS" 2 "I" "pressed %s."
-				       dev-type)
-		    (iron-main-message "EPF" "HS" 2 "I" "lenght %d."
-				       (length dev-list))
-
-		    (unless (string-equal "" dev-list)
-		      (iron-main-epf--devs-panel dev-type
-						 dev-list)
-		      )
-		    )))
-	       (widget-insert "\t()\n")
-	       ))
-
-	   (widget-insert "\n\n")
-      
-	   (iron-main-message "EPF" "HS" 0 "I" "Hercules system.")
-	   (prog1 (widget-setup)
-	     (widget-forward 1))
-	   ))
-       )
-    (iron-main-epf--make-panel session
-			       "*IRON MAIN Hercules system*"
-			       :setup
-			       #'systems-panel-setup)
-    ))
-
-
-(cl-defun iron-main-epf--hercules-system-1 (session &rest args)
-  "Hercules system inspection panel.
-
-Given a SESSION sets up the \"system\" panel.  ARGS are passed
-downstream if needed."
-
-  (ignore args)
-
-  (message "IMPHS0I: %s" session)
-  
-  (cl-assert (iron-main-session-p session) t
-	     "SESSION %S is not a `iron-main-session'"
-	     session)
-
-  (switch-to-buffer "*IRON MAIN Hercules system*")
-
-  (kill-all-local-variables)
-
-  (let ((inhibit-read-only t))
-    (erase-buffer))
-
-  (iron-main-epf-mode)
-
-  ;; Now that we have the session, some of these are repetitions.
-
-  (setq-local iron-main-epf--session session)
-  
-  (setq-local iron-main-machine
-	      (iron-main-session-machine session))
-  (setq-local iron-main-os-flavor
-	      (iron-main-session-os-flavor session))
-
-  (setq-local iron-main-epf--tag "Hercules system")
-  
-  ;; (iron-main-epf--title-field "Hercules system")
-  (setq-local header-line-format
-	      (iron-main-epf--make-header-line "Hercules system"))
-
-  ;; Let's start!
-
-  ;; Devices retrievable from the Hercules command 'devlist'.
-  ;; CTCA, DASD, DSP, FCP, LINE, OSA, PCH, PRT, RDR, and TAPE.
-
-  (let ((devtypes iron-main-epf--+hercules-devtypes+))
-  
-    (widget-insert "Available devices\n\n")
-
-    (dolist (devtype devtypes)
-      (widget-create 'push-button
-		     :notify
-		     (lambda (w cw &rest ignore)
-		       (ignore cw ignore)
-		       (message "IMPHS1I: pressed %s" (widget-value w))
-
-		       (let ((dev-list
-			      (iron-main-hercules-devlist (widget-value w)))
-			  
-			     (dev-list-clean "")
-			     )
-			 (when dev-list
-			   (when iron-main-epf--hs-devinfo-ins-pt
-			     ;; (message ">>> Clean %s devlist." (widget-value w))
-			     (setq dev-list-clean
-				   (iron-main-epf--hercules-clean-devlist
-				    (widget-value w)
-				    dev-list))
-			     ;; (message ">>> Cleaned helpstring.")
-			     (goto-char iron-main-epf--hs-devinfo-ins-pt)
-			     (save-excursion
-			       (let ((inhibit-read-only t)
-				     (inhibit-modification-hooks t)
-				     )
-				 (delete-region
-				  iron-main-epf--hs-devinfo-ins-pt
-			    	  (point-max))))
-					 
-			     (save-excursion
-			       ;; Clean up "HHC0*I" messages before inserting.
-			       (widget-insert dev-list-clean)
-			       )))
-			 ))
-		     devtype)
-      (widget-insert "  "))
-
-    (widget-insert "\n\n")
-    (setq-local iron-main-epf--hs-devinfo-ins-pt (point))
-    )
-  
-  (message "IMPHS0I: Hercules system.")
-  (prog1 (widget-setup)
-    (widget-forward 1))
-  )
-
-
 (cl-defun iron-main-epf--devs-panel (devtype devlist)
   (iron-main-message "EPF" "DP" 0 "I"
 		     "devtype %s."
@@ -2128,7 +1907,6 @@ downstream if needed."
      &allow-other-keys
      )
   (ignore args)
-
 	 
   (setq-local iron-main-epf--tag (format "Hercules %s" tag))
 
@@ -2748,296 +2526,6 @@ downstream if needed."
      :setup
      #'help-top-panel-setup
      )))
-
-
-(cl-defun iron-main-epf--hercules-help-2 (session &rest args)
-  "Hercules help panel.
-
-Given a SESSION sets up the \"help\" panel.  ARGS are passed
-downstream if needed."
-  
-
-  (ignore args)
-
-  (cl-labels
-      ((help-top-panel-setup (&rest args)
-
-	 (ignore args)
-	    
-	 ;; Assuming we are in `current-buffer'.
-	    
-	 (setq-local iron-main-epf--tag "Hercules help")
-  
-	 ;; (iron-main-epf--title-field "Hercules help")
-	 (setq-local header-line-format
-		     (iron-main-epf--make-header-line "Hercules help"))
-
-	 ;; Let's start!
-
-	 (setq-local iron-main-epf--help-ins-pt (point))
-
-	 ;; (message ">>> Point %s" help-ins-pt)
-	 (setq-local
-	  iron-main-epf--help-cmd-widget
-	  (widget-create
-	   'editable-field
-	   :size 10
-	   :value ""			; Initial value.
-	   :format "Hercules command (empty for a list): %v "
-
-	   :keymap
-	   iron-main-epf-editable-field-keymap
-
-	   :action
-	   #'help-subpanel-setup	; Lambda
-	   )
-	  )
-	    	
-	 (widget-insert "\n")
-	 (setq iron-main-epf--help-ins-pt (point))
-	    
-	 (message "IMPHH0I: Hercules help.")
-	 (prog1 (widget-setup)
-	   ;; (widget-forward 1)
-	   (iron-main-epf--goto-first-widget)
-	   )
-	 )
-
-       (help-subpanel-setup (w &rest ignore)
-	 (ignore ignore)
-	 (if iron-main-hercules-pid
-	     (let ((cmd (widget-value w)))
-	       (if (string-equal "" cmd)
-		   (iron-main-message "EPF" "HH" 0 "I" "available commands... (%s)"
-				      iron-main-epf--help-ins-pt)
-		 (iron-main-message "EPF" "HH" 0 "I" "getting help for '%s' (%s)."
-				    cmd
-				    iron-main-epf--help-ins-pt)
-		 )
-	       (let ((helpstring
-		      (iron-main-hercules-help cmd :check-listening t))
-			  
-		     ;; (helpstring-clean "")
-		     (help-buffer-header-line "")
-		     )
-		 (with-current-buffer-window 
-		     "*IRON MAIN Hercules help display*"
-		     '(
-		       ;; display-buffer-below-selected
-		       display-buffer-in-side-window
-		       (side . bottom)
-		       (window-height . 0.75)
-		       )
-		       
-		     nil		; Null QUIT-ACTION
-
-		   (cond (helpstring
-			  (insert (iron-main-epf--hercules-clean-help
-				   cmd
-				   helpstring)
-				  )
-			  
-			  (iron-main-message "EPF" "HH" 0 "I"
-					     "helpstring '%s'"
-					     helpstring)
-			  
-			  (if (string= "" helpstring)
-			      (setq help-buffer-header-line
-				    (format "IRON Main help Hercules commands."))
-			    (setq help-buffer-header-line
-				  (format "IRON Main help for '%s' Hercules command."
-					  cmd))
-			    )
-			  )
-			 (t
-			  (insert (format "\nHelp for %s would appear here (%s)"
-					  cmd
-					  (current-time-string)))
-			  )
-			 )
-		   (setq-local header-line-format
-			       help-buffer-header-line)
-		   (help-mode)
-		   ;; (iron-main-mode)
-		   )))
-	   ;; pid NIL; no connection.
-	   (message (format "IMHPF01W: %s."
-			    (iron-main-epf--instance-banner session)))
-	   ))
-       )
-
-    (iron-main-epf--make-panel
-     session
-     "*IRON MAIN Hercules help*"
-     :setup
-     #'help-top-panel-setup
-     )))
-
-
-(cl-defun iron-main-epf--hercules-help-1 (session &rest args)
-  "Hercules help panel.
-
-Given a SESSION sets up the \"help\" panel.  ARGS are passed
-downstream if needed."
-
-  (ignore args)
-  
-  (cl-assert (iron-main-session-p session) t
-	     "IMPHH0E: SESSION %S is not a `iron-main-session'"
-	     session)
-
-  (switch-to-buffer "*IRON MAIN Hercules help*")
-
-  (kill-all-local-variables)
-
-  (let ((inhibit-read-only t))
-    (erase-buffer))
-  
-  (iron-main-epf-mode)
-
-  ;; Now that we have the session, some of these are repetitions.
-
-  (setq-local iron-main-epf--session session)
-  
-  (setq-local iron-main-machine
-	      (iron-main-session-machine session))
-  (setq-local iron-main-os-flavor
-	      (iron-main-session-os-flavor session))
-
-  (setq-local iron-main-hercules-pid
-	      (iron-main-hs-pid session))
-
-  (setq-local iron-main-epf--tag "Hercules help")
-  
-  ;; (iron-main-epf--title-field "Hercules help")
-  (setq-local header-line-format
-	      (iron-main-epf--make-header-line "Hercules help"))
-
-  ;; Let's start!
-
-  (setq-local iron-main-epf--help-ins-pt (point))
-
-  ;; (message ">>> Point %s" help-ins-pt)
-  (setq-local
-   iron-main-epf--help-cmd-widget
-   (widget-create
-    'editable-field
-    :size 10
-    :value ""				; Initial value.
-    :format "Hercules command (empty for a list): %v "
-
-    :keymap
-    iron-main-epf-editable-field-keymap
-
-    :action
-    (lambda (w &rest ignore)
-      (ignore ignore)
-      (if iron-main-hercules-pid
-	  (progn
-	    (if (string-equal "" (widget-value w))
-		(message "IMHS00I: Available commands... (%s)"
-			 iron-main-epf--help-ins-pt)
-	      (message "IMHS00I: Getting help for '%s' (%s)."
-		       (widget-value w)
-		       iron-main-epf--help-ins-pt)
-	      )
-	    (let ((helpstring
-		   (iron-main-hercules-help (widget-value w)
-					    :check-listening t))
-			  
-		  ;; (helpstring-clean "")
-		  (help-buffer-header-line "")
-		  )
-	      (with-current-buffer-window 
-		  "*IRON MAIN Hercules help display*"
-		  '(
-		    ;; display-buffer-below-selected
-		    display-buffer-in-side-window
-		    (side . bottom)
-		    (window-height . 0.75)
-		    )
-		       
-		  nil			; Null QUIT-ACTION
-
-		(cond (helpstring
-		       (insert (iron-main-epf--hercules-clean-help
-				(widget-value w)
-				helpstring)
-			       )
-		       (if (string= "" helpstring)
-			   (setq help-buffer-header-line
-				 (format "IRON Main help Hercules commands."))
-			 (setq help-buffer-header-line
-			       (format "IRON Main help for '%s' Hercules command."
-				       (widget-value w)))
-			 )
-		       )
-		      (t
-		       (insert (format "\nHelp for %s would appear here (%s)"
-				       (widget-value w)
-				       (current-time-string)))
-		       )
-		      )
-		(setq-local header-line-format
-			    help-buffer-header-line)
-		(help-mode)
-		;; (iron-main-mode)
-		)))
-	;; pid NIL; no connection.
-	(message (format "IMHPF01W: %s."
-			 (iron-main-epf--instance-banner session)))
-	))	; Lambda
-
-    
-    ;; (lambda (w &rest ignore)
-    ;;   (ignore ignore)
-    ;;   (if (string-equal "" (widget-value w))
-    ;; 	(message "IMHS00I: Available commands... (%s)"
-    ;; 	       iron-main-epf--help-ins-pt)
-    ;;     (message "IMHS00I: Getting help for '%s' (%s)."
-    ;; 		 (widget-value w)
-    ;; 		 iron-main-epf--help-ins-pt)
-    ;;     )
-    ;;   (let ((helpstring
-    ;; 	   (iron-main-hercules-help (widget-value w)
-    ;; 				    :check-listening t))
-			  
-    ;; 	  (helpstring-clean "")
-    ;; 	  )
-    ;;     (when helpstring
-    ;; 	(when iron-main-epf--help-ins-pt
-    ;; 	  ;; (message ">>> Clean helpstring.")
-    ;; 	  (setq helpstring-clean
-    ;; 		(iron-main-epf--hercules-clean-help
-    ;; 		 helpstring)
-    ;; 		)
-    ;; 	  ;; (message ">>> Cleaned helpstring.")
-    ;; 	  (goto-char iron-main-epf--help-ins-pt)
-    ;; 	  (save-excursion
-    ;; 	    (let ((inhibit-read-only t)
-    ;; 		  (inhibit-modification-hooks t)
-    ;; 		  )
-    ;; 	      (delete-region
-    ;; 	       iron-main-epf--help-ins-pt
-    ;; 	       (point-max))))
-					 
-    ;; 	  (save-excursion
-    ;; 	    ;; Clean up "HHC0*I" messages before inserting.
-    ;; 	    (widget-insert helpstring-clean)
-    ;; 	    )))
-    ;;     )) ; Lambda
-    )
-   )
-	
-  (widget-insert "\n")
-  (setq iron-main-epf--help-ins-pt (point))
-  
-  (message "IMPHH0I: Hercules help.")
-  (prog1 (widget-setup)
-    ;; (widget-forward 1)
-    (iron-main-epf--goto-first-widget)
-    )
-  )
 
 
 ;;; Panels and Subpanels.
@@ -3683,74 +3171,6 @@ This function is just a placeholder for testing stuff.
      :setup #'panel-setup
      )
     ))
-
-
-;;; To be removed.
-
-(cl-defun iron-main-epf--test-subpanels-1 (session &rest args)
-  "Test functionality for subpanels.
-
-This function is just a placeholder for testing stuff.
-"
-  (ignore args)
-  (cl-assert (iron-main-session-p session) t
-	     "IMPTS0E: SESSION %S is not a `iron-main-session'"
-	     session)
-
-  (iron-main-epf--make-panel
-   session
-   "*IRON MAIN Subpanel Test TOP*"
-   :setup
-   (lambda (&rest args)
-     (ignore args)
-     (use-local-map iron-main-epf--test-toppanel-keymap)
-     (setq-local header-line-format "IMEPFTS01I")
-     (widget-insert "\nTop panel\n")
-     
-     (widget-create
-      'push-button
-      :value "Make Subpanel"
-      :action
-      (lambda (&rest args)
-	(ignore args)
-	(iron-main-message "EPF" "WCB" 1 "I" "creating subpanel %s."
-			   (selected-window))
-	(iron-main-epf--make-subpanel
-	 "*IRON MAIN Subpanel*"
-	 (lambda (&rest args)
-	   (ignore args)
-	   (widget-insert "\nSubpanel\n")
-	   (use-local-map iron-main-epf--test-subpanel-keymap)
-	   
-	   (widget-create
-	    'push-button
-	    :value "Make Subsubpanel"
-	    :action
-	    (lambda (&rest args)
-	      (ignore args)
-	      (iron-main-message "EPF" "WCB" 1 "I" "creating subsubpanel %s."
-				 (selected-window))
-	      (iron-main-epf--make-subpanel
-	       "*IRON MAIN Subsubpanel*"
-	       (lambda (&rest args)
-		 (ignore args)
-		 (widget-insert "\nSubsubpanel\n")
-		 (use-local-map iron-main-epf--test-subpanel-keymap)
-		 (widget-setup)
-		 )
-	       :window-height 7
-	       :header-line "SUB SUB Panel"
-	       ))
-	    )
-	   (widget-setup)
-	   )))
-	 )
-     (prog1 (widget-setup)
-       ;; (widget-forward 1)
-       (iron-main-epf--goto-first-widget))
-     )
-   )
-  )
 
 
 ;;; Panel navigation.
