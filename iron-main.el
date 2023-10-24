@@ -29,7 +29,7 @@
 ;;
 ;; Hercules: <http://www.hercules-390.eu/>
 ;; SDL/Hyperion: <https://github.com/SDL-Hercules-390>
-;; TK4-: http://wotho.ethz.ch/tk4-/
+;; TK4-: http://wotho.ethz.ch/tk4-/ (this may be outdated)
 ;; Jay Moseley's site: http://www.jaymoseley.com/hercules/ (and
 ;; other useful things).
 
@@ -62,7 +62,10 @@ This file, normally located in the standard Emacs configuration
 folder, may contain some initialization code for the IRON MAIN
 library.  E.g., default locations of OS instances in the file system,
 or specialized ports where to read and write to communicate with a
-running Hercules or OS instance.")
+running Hercules or OS instance.
+
+It is loaded after all the IRON MAIN code; therefore all the public
+variables and customizations are available to be tweaked.")
 
 
 ;; The order of the require and load calls is relevant.
