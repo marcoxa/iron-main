@@ -9,7 +9,7 @@
 ;;
 ;; Created: April, 4th, 2021
 ;;
-;; Version: 2023-06-26.1
+;; Version: 2023-11-22.1
 ;;
 ;; Keywords: languages, operating systems.
 
@@ -44,8 +44,9 @@
 
   (define-innermode jcl-poly-pl1-innermode
     :mode 'pl1-mode
-    :head-matcher "^//PL1L\\.SYSIN +DD +\\*"
-    :tail-matcher "^\\(/\\*\\|//\\)"
+    ;; The :head-matcher accomodates the "uppercasing" preprocessor.
+    :head-matcher "^//PL1[LU]\\.SYSIN +DD +\\*"
+    :tail-matcher "^\\(/\\*\\|//\\)"	; The /* must be in first column.
     :head-mode 'host
     :tail-mode 'host)
 
