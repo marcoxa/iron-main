@@ -208,7 +208,7 @@ have the \\='name\\=' and \\='operation\\='.")
 
 
 (defvar jcl-mode--card-not-interpretable
-  "// \{14\}.*"
+  "// \{14\}\\(.*\\)"
 
   "JCL \\='card with nothing before column 16\\='; i.e., not
   interpretable.") 
@@ -289,6 +289,7 @@ have the \\='name\\=' and \\='operation\\='.")
     
     (,jcl-mode--card-end-comments-2 . (1 ,jcl-mode-comment-face))
     (,jcl-mode--comments . (0 ,jcl-mode-comment-face t))
+    (, jcl-mode--card-not-interpretable . (1 ,jcl-mode-comment-face t))
     )
   "The JCL mode \\='font-lock\\=' \\='keyword\\=' specification."
   )
