@@ -89,7 +89,7 @@ as a function) and `jcl-submit-file` (a misnomer; it should be
 "jcl-submit-dataset").  The two functions submit either the
 current buffer or a file of your choice to the "card reader".
 
-Files with `.jcl` extensions are opened in `jcl-mode`. `jcl-poly-mode'
+Files with `.jcl` extensions are opened in `jcl-mode`. `jcl-poly-mode`
 can be entered by invoking the eponimous function.
 
 Most behavior is customizable in the "jcl" group.
