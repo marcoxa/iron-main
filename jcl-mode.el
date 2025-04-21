@@ -472,7 +472,7 @@ integer; its default is 3505."
   (interactive
    (let ((f (read-file-name "JCL: card file: " nil nil 'confirm))
 	 (a (read-string "JCL: card reader host: "
-			   *jcl-mode-default-os-address*))
+			 *jcl-mode-default-os-address*))
 	 (p (read-number "JCL: card reader number/port: "
 			 *jcl-mode-default-os-reader-port*))
 	 )
@@ -499,7 +499,7 @@ integer; its default is 3505."
 	  )
       (delete-process card-reader-stream))
     )
-)
+  )
 
 
 ;;;; Epilogue
