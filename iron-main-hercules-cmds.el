@@ -143,7 +143,7 @@ is no running Hercules instance)."
       (with-current-buffer cmdbuf
 	(goto-char (point-min))
 	(let ((pid-re "HHC17013I Process ID = \\([0-9]+\\)"))
-	  (re-search-forward pid-re)
+	  (re-search-forward pid-re nil nil)
 	  (match-string 1)
 	  )))
     ))

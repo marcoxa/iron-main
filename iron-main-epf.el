@@ -1385,11 +1385,13 @@ the variables IRON-MAIN-MACHINE and IRON-MAIN-OS-FLAVOR."
   
   (when (iron-main-running-machine "Hercules")
     ;; Trying to get the PID.
-    ;; All of this should be factored out and make machine/os dependent.
+    ;; All of this should be factored out and made machine/os dependent.
     (let ((pid (progn
 		 (iron-main-message "EPF" "FP" 1 "I"
 				    "Hercules running; getting PID.")
-		 (iron-main-hercules-qpid)))
+		 (iron-main-hercules-qpid :check-listening t)
+		 )
+	       )
 	  (session
 	   (iron-main-session-start 'iron-main-hercules-session))
 	  )
