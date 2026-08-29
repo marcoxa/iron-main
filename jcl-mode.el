@@ -1,5 +1,4 @@
-;;; jcl-mode --- A major mode to handle MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; jcl-mode --- A major mode to handle MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; jcl-mode.el
 ;;

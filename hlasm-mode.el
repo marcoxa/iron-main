@@ -1,5 +1,4 @@
-;;; hlasm-mode --- A major mode to handle Assembler/IBM for MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp -*-
+;;; hlasm-mode --- A major mode to handle Assembler/IBM for MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; hlasm-mode.el
 ;;

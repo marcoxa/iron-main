@@ -1,5 +1,4 @@
-;;; iron-main-utils --- A major mode to handle MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; iron-main-utils --- A major mode to handle MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; iron-main-utils.el
 ;;

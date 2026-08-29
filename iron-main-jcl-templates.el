@@ -1,5 +1,4 @@
-;;; iron-main-jcl-templates --- JCL templates used by IRON MAIN.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; iron-main-jcl-templates --- JCL templates used by IRON MAIN. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; iron-main-jcl-templates.el
 ;;

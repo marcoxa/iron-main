@@ -1,5 +1,4 @@
-;;; jcl-poly-mode --- A major polymode mode to handle MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; jcl-poly-mode --- A major polymode mode to handle MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; jcl-poly-mode.el
 ;;

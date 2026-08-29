@@ -1,5 +1,4 @@
-;;; pl1-mode --- A major mode to handle (IBM) PL/I code.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; pl1-mode --- A major mode to handle (IBM) PL/I code. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; pl1-mode.el
 ;;

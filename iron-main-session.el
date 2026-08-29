@@ -1,5 +1,4 @@
-;;; iron-main-session --- Session handling for the IRON MAIN package.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
+;;; iron-main-session --- Session handling for the IRON MAIN package. -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; Commentary:
 ;;

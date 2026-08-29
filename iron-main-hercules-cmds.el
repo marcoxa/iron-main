@@ -1,5 +1,4 @@
-;;; iron-main-hercules-cmds --- A major mode to handle MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; iron-main-hercules-cmds --- A major mode to handle MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; iron-main-hercules-cmds.el
 ;;

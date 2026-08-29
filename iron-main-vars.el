@@ -1,5 +1,4 @@
-;;; iron-main-vars --- A major mode to handle MVS or Z/OS JCL.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
+;;; iron-main-vars --- A major mode to handle MVS or Z/OS JCL. -*- Mode: Emacs-Lisp; lexical-binding: t; -*-
 
 ;;; iron-main-vars.el
 ;;

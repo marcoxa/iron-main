@@ -1,5 +1,4 @@
-;;; iron-main-widgets --- Session handling for the IRON MAIN package.
-;;; -*- Mode: Emacs-Lisp; lexical-binding: t -*-
+;;; iron-main-widgets --- Session handling for the IRON MAIN package. -*- Mode: Emacs-Lisp; lexical-binding: t -*-
 
 ;;; Commentary:
 ;;
